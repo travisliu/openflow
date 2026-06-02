@@ -2,6 +2,8 @@ import type { AgentCallInput, AgentResult } from "../types/agent.js";
 import type { ScheduledTask, ScheduleOptions } from "../types/scheduler.js";
 import type { RuntimeState } from "./types.js";
 import { InvalidDslCallError } from "./errors.js";
+import { ExecflowError } from "../errors/types.js";
+import { ErrorCode } from "../errors/codes.js";
 
 export function createDsl(runtime: RuntimeState) {
   return {
@@ -92,6 +94,11 @@ export function createDsl(runtime: RuntimeState) {
 
       const result = await runtime.scheduler.schedule(task, scheduleOptions);
       runtime.agentResults.push(result);
+
+      if (!result.ok && result.error?.code === ErrorCode.PROVIDER_UNAVAILABLE) {
+        throw new ExecflowError(ErrorCode.PROVIDER_UNAVAILABLE, result.error.message);
+      }
+
       return result;
     },
 

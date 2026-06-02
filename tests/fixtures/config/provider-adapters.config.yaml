@@ -1,0 +1,24 @@
+defaultProvider: mock
+concurrency: 1
+timeoutMs: 10000
+
+providers:
+  mock:
+    command: mock
+    responses:
+      review-1:
+        text: "Deterministic response for review-1"
+        json: { "status": "ok", "score": 10 }
+        stdout: "Mock stdout for review-1"
+        stderr: "Mock stderr for review-1"
+        exitCode: 0
+
+security:
+  passEnv: []
+  redactEnv: []
+  allowShell: false
+  allowWorkflowImports: false
+
+reporting:
+  mode: pretty
+  verbose: false

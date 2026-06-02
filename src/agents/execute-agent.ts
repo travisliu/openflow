@@ -6,6 +6,7 @@ import { EventBus } from "../orchestration/event-bus.js";
 import { createDefaultProviderRegistry } from "./registry.js";
 import { runProcess } from "./process-runner.js";
 import { validateJson } from "../structured/validate-json.js";
+import { normalizeAgentOutput } from "../structured/normalize-agent-output.js";
 import { buildProviderEnv, shouldRedactEnvName, redactText } from "../security/env.js";
 
 export class DefaultAgentExecutor implements AgentExecutor {
@@ -74,14 +75,29 @@ export class DefaultAgentExecutor implements AgentExecutor {
       const response = mockAdapter.lookupResponse(runInput);
 
       if (response.delayMs) {
-        await new Promise((resolve) => setTimeout(resolve, response.delayMs));
+        try {
+          await new Promise((resolve, reject) => {
+            const timer = setTimeout(resolve, response.delayMs);
+            input.signal.addEventListener("abort", () => {
+              clearTimeout(timer);
+              reject(new Error("Aborted"));
+            });
+          });
+        } catch (err: any) {
+          const reason = String(input.signal.reason);
+          if (reason.includes("timed out")) {
+            timedOut = true;
+          } else {
+            cancelled = true;
+          }
+        }
       }
 
       stdout = redactText(response.stdout ?? (response.text ?? "mock response"), secretValues);
       stderr = redactText(response.stderr ?? "", secretValues);
       exitCode = response.exitCode !== undefined ? response.exitCode : 0;
-      timedOut = !!response.timeout;
-      cancelled = !!response.fail && response.error?.code === "USER_CANCELLED";
+      timedOut = timedOut || !!response.timeout;
+      cancelled = cancelled || (!!response.fail && response.error?.code === "USER_CANCELLED");
 
       // Stream mock output to event bus and durable logs
       if (stdout) {
@@ -258,36 +274,41 @@ export class DefaultAgentExecutor implements AgentExecutor {
 
     await this.artifactStore.writeJson(`agents/${input.id}/raw-result.json`, parseResult.raw ?? parseResult);
 
-    // Precedence 5: Schema Validation
-    if (input.schema) {
-      const valResult = validateJson(parseResult.json, input.schema);
-      if (!valResult.ok) {
-        agentArtifacts.validationErrorPath = `agents/${input.id}/validation-error.json`;
-        await this.artifactStore.writeJson(`agents/${input.id}/validation-error.json`, valResult.errors);
+    // Precedence 5: Normalization and Schema Validation
+    const normalized = await normalizeAgentOutput({
+      schema: input.schema,
+      parsed: parseResult,
+      stdout: redactedStdout
+    });
 
-        const failureResult: AgentFailureResult = {
-          ok: false,
-          status: "failed",
-          id: input.id,
-          label: input.label,
-          provider: input.provider,
-          stdout: redactedStdout,
-          stderr: redactedStderr,
-          exitCode,
-          durationMs,
-          artifacts: agentArtifacts,
-          error: {
-            name: "ValidationError",
-            message: valResult.message,
-            code: "SCHEMA_VALIDATION_FAILED"
-          }
-        };
-        return failureResult;
+    if (!normalized.ok) {
+      if (normalized.error.errors) {
+        agentArtifacts.validationErrorPath = `agents/${input.id}/validation-error.json`;
+        await this.artifactStore.writeJson(`agents/${input.id}/validation-error.json`, normalized.error.errors);
       }
+
+      const failureResult: AgentFailureResult = {
+        ok: false,
+        status: "failed",
+        id: input.id,
+        label: input.label,
+        provider: input.provider,
+        stdout: redactedStdout,
+        stderr: redactedStderr,
+        exitCode,
+        durationMs,
+        artifacts: agentArtifacts,
+        error: {
+          name: "ValidationError",
+          message: normalized.error.message,
+          code: normalized.error.code as any
+        }
+      };
+      return failureResult;
     }
 
     // Write normalized result if successful
-    await this.artifactStore.writeJson(`agents/${input.id}/normalized-result.json`, parseResult.json ?? parseResult.text);
+    await this.artifactStore.writeJson(`agents/${input.id}/normalized-result.json`, normalized.json ?? normalized.text);
 
     const successResult: AgentSuccessResult = {
       ok: true,
@@ -295,8 +316,8 @@ export class DefaultAgentExecutor implements AgentExecutor {
       id: input.id,
       label: input.label,
       provider: input.provider,
-      text: redactText(parseResult.text ?? "", secretValues),
-      json: parseResult.json,
+      text: redactText(normalized.text ?? "", secretValues),
+      json: normalized.json,
       stdout: redactedStdout,
       stderr: redactedStderr,
       exitCode: exitCode ?? 0,

@@ -2,6 +2,7 @@ import { ErrorCode } from "../../errors/codes.js";
 import { ExecflowError } from "../../errors/types.js";
 import { loadConfig } from "../../config/load.js";
 import type { ProviderHealthChecker, DoctorResult } from "../../doctors/public.js";
+import { createDefaultProviderRegistry } from "../../agents/registry.js";
 
 export interface DoctorCommandDeps {
   providerHealthChecker: ProviderHealthChecker;
@@ -14,12 +15,23 @@ export interface DoctorCommandInput {
 
 const defaultProviderHealthChecker: ProviderHealthChecker = {
   async checkAll(config): Promise<DoctorResult> {
-    return {
-      ok: true,
-      providers: [
-        { provider: "mock", ok: true, message: "available" }
-      ]
-    };
+    const registry = createDefaultProviderRegistry({ config: { ...config, cliArgs: {} } });
+    const providers = [];
+    let ok = true;
+    for (const adapter of registry.list()) {
+      const health = adapter.checkHealth
+        ? await adapter.checkHealth()
+        : { provider: adapter.name, available: true, message: "available" };
+      providers.push({
+        provider: health.provider,
+        ok: health.available,
+        message: health.message || (health.available ? "available" : "unavailable")
+      });
+      if (!health.available) {
+        ok = false;
+      }
+    }
+    return { ok, providers };
   }
 };
 

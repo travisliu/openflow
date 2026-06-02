@@ -1,0 +1,18 @@
+defaultProvider: mock
+concurrency: 1
+timeoutMs: 30000
+providers:
+  mock:
+    responses:
+      timeout-agent:
+        stdout: "Partial stdout emitted before timeout"
+        stderr: "Partial stderr emitted before timeout"
+        delayMs: 1000
+security:
+  allowShell: false
+  allowWorkflowImports: false
+  passEnv: []
+  redactEnv: []
+reporting:
+  mode: json
+  verbose: true

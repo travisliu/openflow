@@ -7,7 +7,7 @@ export type NormalizedOutputResult =
   | { ok: false; error: { message: string; code: string; errors?: unknown[] } };
 
 export async function normalizeAgentOutput(input: {
-  schema?: JsonSchema;
+  schema?: JsonSchema | undefined;
   parsed: ProviderParsedResult;
   stdout: string;
 }): Promise<NormalizedOutputResult> {

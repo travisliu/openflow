@@ -37,7 +37,7 @@ describe("manifest helpers", () => {
   it("updateManifestStatus changes updatedAt", () => {
     const mockNow = new Date("2026-06-02T12:00:00.000Z");
     const manifest = createInitialManifest({ ...defaultInput, now: new Date("2026-06-02T10:00:00.000Z") });
-    const updated = updateManifestStatus(manifest, "succeeded", mockNow);
+    const updated = updateManifestStatus(manifest, "succeeded", undefined, mockNow);
     expect(updated.updatedAt).toBe("2026-06-02T12:00:00.000Z");
     expect(updated.updatedAt).not.toBe(manifest.updatedAt);
   });

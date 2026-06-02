@@ -25,40 +25,25 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
 
   const statement = sourceFile.statements[0];
 
-  if (!statement || !ts.isVariableStatement(statement)) {
-    throw new ExecflowError(
-      ErrorCode.WORKFLOW_PARSE_ERROR,
-      "Metadata must be the first top-level statement."
-    );
-  }
-
-  const hasExport = statement.modifiers?.some(
+  const isVariable = statement && ts.isVariableStatement(statement);
+  const hasExport = isVariable && (statement as ts.VariableStatement).modifiers?.some(
     (m) => m.kind === ts.SyntaxKind.ExportKeyword
   );
-  if (!hasExport) {
+  const declarations = isVariable ? (statement as ts.VariableStatement).declarationList.declarations : [];
+  const firstDecl = declarations[0];
+  const hasMetaName = declarations.length === 1 && 
+    firstDecl &&
+    ts.isIdentifier(firstDecl.name) && 
+    firstDecl.name.text === "meta";
+
+  if (!isVariable || !hasExport || !hasMetaName) {
     throw new ExecflowError(
       ErrorCode.WORKFLOW_PARSE_ERROR,
-      "Metadata must be exported ('export const meta')."
+      "Metadata ('export const meta') must be the first top-level statement."
     );
   }
 
-  const declarations = statement.declarationList.declarations;
-  if (declarations.length !== 1) {
-    throw new ExecflowError(
-      ErrorCode.WORKFLOW_PARSE_ERROR,
-      "Metadata variable statement must declare exactly one variable."
-    );
-  }
-
-  const declaration = declarations[0];
-  if (!declaration || !ts.isIdentifier(declaration.name) || declaration.name.text !== "meta") {
-    throw new ExecflowError(
-      ErrorCode.WORKFLOW_PARSE_ERROR,
-      "Metadata variable must be named 'meta'."
-    );
-  }
-
-  const initializer = declaration.initializer;
+  const initializer = firstDecl?.initializer;
   if (!initializer || !ts.isObjectLiteralExpression(initializer)) {
     throw new ExecflowError(
       ErrorCode.WORKFLOW_PARSE_ERROR,

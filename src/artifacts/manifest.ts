@@ -29,12 +29,17 @@ export function createInitialManifest(input: CreateManifestInput): RunManifest {
 export function updateManifestStatus(
   manifest: RunManifest,
   status: "succeeded" | "failed" | "cancelled",
+  error?: any,
   now?: Date
 ): RunManifest {
   const timestamp = (now || new Date()).toISOString();
-  return {
+  const res: RunManifest = {
     ...manifest,
     status,
     updatedAt: timestamp
   };
+  if (error !== undefined) {
+    res.error = error;
+  }
+  return res;
 }

@@ -2,6 +2,8 @@ import type { AgentAdapter, ResolvedConfig, MockProviderConfig } from "./types.j
 import { MockAdapter } from "./mock-adapter.js";
 import { CodexExecAdapter } from "./codex-exec.js";
 import { GeminiCliAdapter } from "./gemini-cli.js";
+import { ExecflowError } from "../errors/types.js";
+import { ErrorCode } from "../errors/codes.js";
 
 export class ProviderRegistry {
   private readonly adapters = new Map<string, AgentAdapter>();
@@ -16,7 +18,10 @@ export class ProviderRegistry {
   get(provider: string): AgentAdapter {
     const adapter = this.adapters.get(provider);
     if (!adapter) {
-      throw new Error(`Unknown provider: ${provider}`);
+      throw new ExecflowError(
+        ErrorCode.PROVIDER_UNAVAILABLE,
+        `Unknown provider: ${provider}`
+      );
     }
     return adapter;
   }

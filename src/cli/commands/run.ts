@@ -44,6 +44,7 @@ const defaultRuntimeRunner: RuntimeRunner = {
 };
 
 export async function runCommand(input: RunCommandInput): Promise<void> {
+  console.error("DEBUG runCommand started");
   const rawOptions = input.rawOptions || {};
   const cwd = rawOptions.cwd ?? process.cwd();
 
@@ -159,56 +160,67 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
   const defaultRunner = new DefaultRuntimeRunner();
   const runner = input.deps?.runtimeRunner ?? defaultRunner;
 
-  const result = await runner.run({
-    parsedWorkflow: parsed,
-    config: config as any,
-    cli: {
-      workflowFile: loaded.sourcePath,
-      provider: rawOptions.provider,
-      args: parsedArgs,
-      cwd: config.cwd,
-      outDir: runOutDir,
-      report: config.reporting.mode,
-      concurrency: config.concurrency,
-      timeoutMs: config.timeoutMs,
-      dryRun: false,
-      failFast: !!rawOptions.failFast,
-      verbose: config.reporting.verbose
-    }
-  }, {
-    agentExecutor,
-    eventSink: eventBus,
-    artifactStore,
-    idGenerator: {
-      nextId: (prefix: string) => (prefix === "run" ? runIdGenerated : crypto.randomUUID())
-    }
-  });
+  const abortController = new AbortController();
+  const sigIntHandler = () => {
+    abortController.abort("SIGINT received");
+  };
+  process.on("SIGINT", sigIntHandler);
 
-  await eventBus.drain();
-
-  if (artifactStore.isRunCreated()) {
-    await artifactStore.writeFinalReport(result);
-  }
-  await reporter.finish(result);
-
-  if (result.status === "failed") {
-    const agents = result.agents || [];
-    const hasTimeout = agents.some((a) => a.status === "timed_out");
-    
-    let errorCode: ErrorCode = hasTimeout ? ErrorCode.PROCESS_TIMEOUT : ErrorCode.PROVIDER_PROCESS_FAILED;
-    
-    // Preserve specific error code if present
-    if (result.error && typeof result.error === "object" && result.error.code) {
-      if (Object.values(ErrorCode).includes(result.error.code as any)) {
-        errorCode = result.error.code as ErrorCode;
+  try {
+    const result = await runner.run({
+      parsedWorkflow: parsed,
+      config: config as any,
+      cli: {
+        workflowFile: loaded.sourcePath,
+        provider: rawOptions.provider,
+        args: parsedArgs,
+        cwd: config.cwd,
+        outDir: runOutDir,
+        report: config.reporting.mode,
+        concurrency: config.concurrency,
+        timeoutMs: config.timeoutMs,
+        dryRun: false,
+        failFast: !!rawOptions.failFast,
+        verbose: config.reporting.verbose
+      },
+      signal: abortController.signal
+    }, {
+      agentExecutor,
+      eventSink: eventBus,
+      artifactStore,
+      idGenerator: {
+        nextId: (prefix: string) => (prefix === "run" ? runIdGenerated : crypto.randomUUID())
       }
+    });
+
+    await eventBus.drain();
+
+    if (artifactStore.isRunCreated()) {
+      await artifactStore.writeFinalReport(result);
     }
-    
-    const errMessage = typeof result.error === "string"
-      ? result.error
-      : (result.error as any)?.message || "Workflow run failed";
-    throw new ExecflowError(errorCode, errMessage, { cause: result.error });
-  } else if (result.status === "cancelled") {
-    throw new ExecflowError(ErrorCode.USER_CANCELLED, "Workflow run was cancelled");
+    await reporter.finish(result);
+
+    if (result.status === "failed") {
+      const agents = result.agents || [];
+      const hasTimeout = agents.some((a) => a.status === "timed_out");
+      
+      let errorCode: ErrorCode = hasTimeout ? ErrorCode.PROCESS_TIMEOUT : ErrorCode.PROVIDER_PROCESS_FAILED;
+      
+      // Preserve specific error code if present
+      if (result.error && typeof result.error === "object" && result.error.code) {
+        if (Object.values(ErrorCode).includes(result.error.code as any)) {
+          errorCode = result.error.code as ErrorCode;
+        }
+      }
+      
+      const errMessage = typeof result.error === "string"
+        ? result.error
+        : (result.error as any)?.message || "Workflow run failed";
+      throw new ExecflowError(errorCode, errMessage, { cause: result.error });
+    } else if (result.status === "cancelled") {
+      throw new ExecflowError(ErrorCode.USER_CANCELLED, "Workflow run was cancelled");
+    }
+  } finally {
+    process.off("SIGINT", sigIntHandler);
   }
 }

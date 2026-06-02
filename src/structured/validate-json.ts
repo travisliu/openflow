@@ -1,7 +1,7 @@
 import AjvModule from "ajv";
 import type { JsonSchema } from "../types/index.js";
 const Ajv = (AjvModule as any).default || AjvModule;
-const ajv = new Ajv();
+const ajv = new Ajv({ allErrors: true });
 
 export interface JsonValidationSuccess {
   ok: true;

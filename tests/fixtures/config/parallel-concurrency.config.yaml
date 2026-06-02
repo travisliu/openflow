@@ -1,0 +1,44 @@
+defaultProvider: mock
+concurrency: 5
+timeoutMs: 10000
+
+providers:
+  mock:
+    command: mock
+    responses:
+      agent1:
+        text: "Agent 1 response"
+        delayMs: 100
+      agent2:
+        text: "Agent 2 response"
+        delayMs: 100
+      agent3:
+        text: "Agent 3 response"
+        delayMs: 100
+      agent4:
+        text: "Agent 4 response"
+        delayMs: 100
+      agent5:
+        text: "Agent 5 response"
+        delayMs: 100
+      success-quick:
+        text: "Success Quick"
+        exitCode: 0
+      fail-quick:
+        text: "Fail Quick"
+        exitCode: 1
+        stderr: "Quick failure error"
+      success-slow:
+        text: "Success Slow"
+        exitCode: 0
+        delayMs: 200
+
+security:
+  passEnv: []
+  redactEnv: []
+  allowShell: false
+  allowWorkflowImports: false
+
+reporting:
+  mode: json
+  verbose: false

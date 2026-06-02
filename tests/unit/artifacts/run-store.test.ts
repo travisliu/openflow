@@ -1,14 +1,28 @@
-import { describe, expect, it, afterEach } from "vitest";
+import { describe, expect, it, afterEach, vi } from "vitest";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { FileSystemArtifactStore } from "../../../src/artifacts/run-store.js";
+import { ErrorCode } from "../../../src/errors/codes.js";
 
 const TEST_OUT_DIR = path.resolve("tests/temp-runs-test");
+
+// Mock fs/promises
+vi.mock("node:fs/promises", async (importActual) => {
+  const actual = await importActual<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    rename: vi.fn(actual.rename),
+    writeFile: vi.fn(actual.writeFile)
+  };
+});
 
 describe("FileSystemArtifactStore", () => {
   afterEach(async () => {
     // Clean up test directories
-    await fs.rm(TEST_OUT_DIR, { recursive: true, force: true });
+    // Since we mocked fs, we might need the actual fs here or just use the mock if it calls through
+    const actualFs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    await actualFs.rm(TEST_OUT_DIR, { recursive: true, force: true });
+    vi.clearAllMocks();
   });
 
   const defaultRunInput = {
@@ -77,10 +91,41 @@ describe("FileSystemArtifactStore", () => {
 
   it("writeFinalReport() writes through temp-file rename", async () => {
     const store = new FileSystemArtifactStore();
-    await store.createRun(defaultRunInput);
-    const reportPath = await store.writeFinalReport({ result: "done" });
+    const artifacts = await store.createRun(defaultRunInput);
+    const reportPath = path.join(artifacts.rootDir, "report.json");
+    const tmpPath = `${reportPath}.tmp`;
+
+    const reportData = { result: "done" };
+    const resultPath = await store.writeFinalReport(reportData);
+
+    expect(resultPath).toBe(reportPath);
+    expect(fs.rename).toHaveBeenCalledWith(tmpPath, reportPath);
+
     const content = await fs.readFile(reportPath, "utf8");
-    expect(JSON.parse(content)).toEqual({ result: "done" });
+    expect(JSON.parse(content)).toEqual(reportData);
+
+    // Assert no temp file left
+    await expect(fs.access(tmpPath)).rejects.toThrow();
+  });
+
+  it("writeFinalReport() throws ARTIFACT_WRITE_FAILED on error", async () => {
+    const store = new FileSystemArtifactStore();
+    await store.createRun(defaultRunInput);
+
+    vi.mocked(fs.writeFile).mockImplementationOnce(async (path) => {
+      if (path.toString().endsWith(".tmp")) {
+        throw new Error("Disk full");
+      }
+      return await (await vi.importActual<any>("node:fs/promises")).writeFile(path, arguments[1], arguments[2]);
+    });
+
+    try {
+      await store.writeFinalReport({ result: "fail" });
+      expect.unreachable("Should have thrown");
+    } catch (error: any) {
+      expect(error.code).toBe(ErrorCode.ARTIFACT_WRITE_FAILED);
+      expect(error.message).toContain("Disk full");
+    }
   });
 
   it("path traversal like ../evil.txt is rejected", async () => {

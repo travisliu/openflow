@@ -42,11 +42,24 @@ export class DefaultScheduler implements Scheduler {
   schedule<T>(task: ScheduledTask<T>, options?: ScheduleOptions): Promise<T> {
     const abortController = createLinkedAbortController();
 
+    let timeoutTimer: NodeJS.Timeout | null = null;
+    if (options?.timeoutMs && options.timeoutMs > 0 && options.timeoutMs !== Infinity) {
+      timeoutTimer = setTimeout(() => {
+        abortController.abort(`Task ${task.id} timed out after ${options.timeoutMs}ms`);
+      }, options.timeoutMs);
+    }
+
     let resolveFn!: (value: T) => void;
     let rejectFn!: (reason: any) => void;
     const promise = new Promise<T>((resolve, reject) => {
-      resolveFn = resolve;
-      rejectFn = reject;
+      resolveFn = (value: T) => {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+        resolve(value);
+      };
+      rejectFn = (reason: any) => {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+        reject(reason);
+      };
     });
 
     const internalTask: InternalTask<T> = {
@@ -237,10 +250,15 @@ export class DefaultScheduler implements Scheduler {
           const isAbort = internalTask.abortController.signal.aborted || err.name === "AbortError";
           const status = isAbort ? "cancelled" : "failed";
           
+          let code = isAbort ? "USER_CANCELLED" : "INTERNAL_ERROR";
+          if (!isAbort && err && typeof err === "object" && "code" in err) {
+            code = err.code;
+          }
+
           const errorPayload = {
             name: err.name || "Error",
             message: err.message || String(err),
-            code: isAbort ? "USER_CANCELLED" : "INTERNAL_ERROR"
+            code
           };
           if (err.stack) {
             (errorPayload as any).stack = err.stack;

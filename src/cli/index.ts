@@ -14,6 +14,7 @@ function collectArgs(value: string, previous: string[]): string[] {
 }
 
 export async function main(argv: string[]): Promise<void> {
+  console.error("DEBUG main argv:", argv);
   const program = new Command();
 
   program

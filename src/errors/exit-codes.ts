@@ -16,9 +16,11 @@ export const ExitCode = {
 export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode];
 
 export function exitCodeForError(error: unknown): ExitCode {
-  if (!(error instanceof ExecflowError)) return ExitCode.InternalError;
+  const isExecflowError = error instanceof ExecflowError || (error && typeof error === "object" && "code" in error && "name" in error && (error as any).name === "ExecflowError");
+  if (!isExecflowError) return ExitCode.InternalError;
 
-  switch (error.code) {
+  const code = (error as any).code;
+  switch (code) {
     case ErrorCode.CLI_USAGE_ERROR:
     case ErrorCode.CONFIG_VALIDATION_ERROR:
       return ExitCode.CliUsage;

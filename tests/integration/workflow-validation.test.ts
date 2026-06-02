@@ -1,0 +1,172 @@
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { main } from "../../src/cli/index.js";
+import * as path from "node:path";
+import * as fs from "node:fs/promises";
+import { exitCodeForError } from "../../src/errors/exit-codes.js";
+import { parseWorkflow } from "../../src/workflow/parse.js";
+
+const TEMP_DIR = path.resolve("tests/temp-tc-01");
+
+async function runCli(args: string[]) {
+  const stdoutData: string[] = [];
+  const stderrData: string[] = [];
+
+  const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+    stdoutData.push(chunk.toString());
+    return true;
+  });
+  const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+    stderrData.push(chunk.toString());
+    return true;
+  });
+  const logSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+    stdoutData.push(args.join(" ") + "\n");
+  });
+  const errorSpy = vi.spyOn(console, "error").mockImplementation((...args) => {
+    stderrData.push(args.join(" ") + "\n");
+  });
+
+  let error: any = null;
+
+  try {
+    await main(["node", "execflow", ...args]);
+  } catch (err) {
+    error = err;
+  } finally {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  }
+
+  return {
+    stdout: stdoutData.join(""),
+    stderr: stderrData.join(""),
+    error
+  };
+}
+
+describe("Workflow Validation", () => {
+  beforeEach(async () => {
+    await fs.rm(TEMP_DIR, { recursive: true, force: true });
+    await fs.mkdir(TEMP_DIR, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await fs.rm(TEMP_DIR, { recursive: true, force: true });
+  });
+
+  it("Missing metadata fails validation", async () => {
+    const workflowPath = path.resolve("tests/fixtures/workflows/invalid-missing-meta.workflow.js");
+    const result = await runCli([
+      "validate",
+      workflowPath,
+      "--cwd",
+      TEMP_DIR
+    ]);
+
+    expect(result.error).toBeDefined();
+    const exitCode = exitCodeForError(result.error);
+    expect(exitCode).toBe(3);
+    
+    // Error code is WORKFLOW_VALIDATION_ERROR or WORKFLOW_PARSE_ERROR.
+    expect(["WORKFLOW_VALIDATION_ERROR", "WORKFLOW_PARSE_ERROR"]).toContain(result.error.code);
+
+    // Error message explains that metadata is required.
+    expect(result.error.message).toMatch(/metadata/i);
+  });
+
+  it("Metadata not first statement fails validation", async () => {
+    const workflowPath = path.resolve("tests/fixtures/workflows/invalid-meta-not-first.js");
+    const result = await runCli([
+      "validate",
+      workflowPath,
+      "--cwd",
+      TEMP_DIR
+    ]);
+
+    expect(result.error).toBeDefined();
+    const exitCode = exitCodeForError(result.error);
+    expect(exitCode).toBe(3);
+    
+    expect(result.error.code).toBe("WORKFLOW_PARSE_ERROR");
+
+    // Error message explains that meta must be the first top-level statement.
+    expect(result.error.message).toMatch(/must be the first top-level statement/i);
+  });
+
+  it("Dynamic metadata fails validation", async () => {
+    const workflowContent = `const name = "dynamic";
+export const meta = {
+  name,
+  description: "Invalid dynamic metadata"
+};
+export default {};
+`;
+    const workflowPath = path.join(TEMP_DIR, "dynamic-meta.workflow.js");
+    await fs.writeFile(workflowPath, workflowContent);
+
+    expect(() => parseWorkflow({
+      sourcePath: "dynamic-meta.workflow.js",
+      sourceText: workflowContent
+    })).toThrow(/statically analyzable|first top-level statement/);
+
+    const result = await runCli([
+      "validate",
+      workflowPath,
+      "--cwd",
+      TEMP_DIR
+    ]);
+
+    expect(result.error).toBeDefined();
+    const exitCode = exitCodeForError(result.error);
+    expect(exitCode).toBe(3);
+    
+    // Error explains that metadata must be statically analyzable
+    expect(result.error.message).toMatch(/statically analyzable|first top-level statement|literal/i);
+  });
+
+  it("Restricted require() fails validation", async () => {
+    const workflowPath = path.resolve("tests/fixtures/workflows/invalid-require.js");
+    const result = await runCli([
+      "validate",
+      workflowPath,
+      "--cwd",
+      TEMP_DIR
+    ]);
+
+    expect(result.error).toBeDefined();
+    const exitCode = exitCodeForError(result.error);
+    // CLI exits with code 3 or 5
+    expect([3, 5]).toContain(exitCode);
+    
+    // Error includes a stable code such as WORKFLOW_VALIDATION_ERROR or SECURITY_POLICY_VIOLATION.
+    expect(["WORKFLOW_VALIDATION_ERROR", "SECURITY_POLICY_VIOLATION"]).toContain(result.error.code);
+
+    // Error message identifies require() as unsupported.
+    expect(result.error.message).toMatch(/require\(\)/);
+  });
+
+  it("Unsupported pipeline() fails validation", async () => {
+    // Arrange
+    const workflowPath = path.resolve("tests/fixtures/workflows/invalid-pipeline.js");
+    
+    // Act
+    const result = await runCli([
+      "validate",
+      workflowPath,
+      "--cwd",
+      TEMP_DIR
+    ]);
+
+    // Assert
+    expect(result.error).toBeDefined();
+    const exitCode = exitCodeForError(result.error);
+    
+    // CLI exits with code 3.
+    expect(exitCode).toBe(3);
+    
+    // Error explains that pipeline() is not supported in MVP.
+    expect(result.error.message).toMatch(/pipeline\(\) is not supported in the MVP/);
+  });
+});

@@ -2,17 +2,20 @@ import { ExecflowError } from "./types.js";
 import type { SerializedError } from "./types.js";
 
 export function serializeError(error: unknown): SerializedError {
-  if (error instanceof ExecflowError) {
+  const isExecflowError = error instanceof ExecflowError || (error && typeof error === "object" && "code" in error && "name" in error && (error as any).name === "ExecflowError");
+
+  if (isExecflowError) {
+    const execErr = error as any;
     const res: SerializedError = {
-      name: error.name,
-      message: error.message,
-      code: error.code,
+      name: execErr.name,
+      message: execErr.message,
+      code: execErr.code,
     };
-    if (error.stack !== undefined) {
-      res.stack = error.stack;
+    if (execErr.stack !== undefined) {
+      res.stack = execErr.stack;
     }
-    if (error.cause !== undefined) {
-      res.cause = error.cause;
+    if (execErr.cause !== undefined) {
+      res.cause = execErr.cause;
     }
     return res;
   }

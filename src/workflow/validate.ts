@@ -45,7 +45,7 @@ export function validateWorkflow(
       if (ts.isIdentifier(callee)) {
         const calleeText = callee.text;
         if (calleeText === "require") {
-          report(node, "Direct module access is not allowed.");
+          report(node, "require() is not supported. Direct module access is not allowed.");
         } else if (calleeText === "shell") {
           report(node, "shell() is not supported in the MVP.");
         } else if (calleeText === "pipeline") {

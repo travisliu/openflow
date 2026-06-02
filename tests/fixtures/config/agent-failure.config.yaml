@@ -1,0 +1,43 @@
+defaultProvider: mock
+concurrency: 2
+timeoutMs: 10000
+
+providers:
+  mock:
+    command: mock
+    responses:
+      failing-agent-01:
+        text: "Failure text"
+        exitCode: 1
+        stderr: "Diagnostic error message"
+        stdout: "Diagnostic stdout"
+      failing-agent-02:
+        text: "Failure text"
+        exitCode: 1
+        stderr: "Failure stderr"
+      successful-agent:
+        text: "Success text"
+        exitCode: 0
+        stdout: "Success stdout"
+      fail-fast-trigger:
+        exitCode: 1
+        delayMs: 50
+      agent-active:
+        exitCode: 0
+        delayMs: 2000
+      agent-queued-1:
+        exitCode: 0
+        delayMs: 100
+      agent-queued-2:
+        exitCode: 0
+        delayMs: 100
+
+security:
+  passEnv: []
+  redactEnv: []
+  allowShell: false
+  allowWorkflowImports: false
+
+reporting:
+  mode: json
+  verbose: false

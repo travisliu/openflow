@@ -2,6 +2,8 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import type { ArtifactStore, RunArtifacts, CreateRunInput, RunManifest } from "../types/artifacts.js";
 import { createInitialManifest, updateManifestStatus } from "./manifest.js";
+import { ExecflowError } from "../errors/types.js";
+import { ErrorCode } from "../errors/codes.js";
 
 function safeFileName(input: string): string {
   return input.replace(/[^a-zA-Z0-9._:-]/g, "_");
@@ -99,16 +101,24 @@ export class FileSystemArtifactStore implements ArtifactStore {
     }
     const reportPath = path.join(this.runRootDir, "report.json");
     const tmpPath = `${reportPath}.tmp`;
-    await fs.writeFile(tmpPath, JSON.stringify(value, null, 2), "utf8");
-    await fs.rename(tmpPath, reportPath);
-    return reportPath;
+    try {
+      await fs.writeFile(tmpPath, JSON.stringify(value, null, 2), "utf8");
+      await fs.rename(tmpPath, reportPath);
+      return reportPath;
+    } catch (error) {
+      throw new ExecflowError(
+        ErrorCode.ARTIFACT_WRITE_FAILED,
+        `Failed to write final report: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      );
+    }
   }
 
-  async updateManifest(status: "succeeded" | "failed" | "cancelled"): Promise<string> {
+  async updateManifest(status: "succeeded" | "failed" | "cancelled", error?: any): Promise<string> {
     if (!this.runRootDir || !this.manifestObj) {
       throw new Error("Run has not been created yet.");
     }
-    const updated = updateManifestStatus(this.manifestObj, status);
+    const updated = updateManifestStatus(this.manifestObj, status, error);
     this.manifestObj = updated;
     const manifestPath = path.join(this.runRootDir, "manifest.json");
     await fs.writeFile(manifestPath, JSON.stringify(updated, null, 2), "utf8");

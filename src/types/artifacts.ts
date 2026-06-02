@@ -20,6 +20,7 @@ export interface RunManifest {
   execflowVersion: string;
   cwd: string;
   configPath?: string | undefined;
+  error?: any;
 }
 
 export interface CreateRunInput {
@@ -52,7 +53,7 @@ export interface ArtifactStore {
   writeJson(relativePath: string, value: unknown): Promise<string>;
   appendJsonl(relativePath: string, value: unknown): Promise<string>;
   writeFinalReport(value: unknown): Promise<string>;
-  updateManifest(status: "succeeded" | "failed" | "cancelled"): Promise<string>;
+  updateManifest(status: "succeeded" | "failed" | "cancelled", error?: any): Promise<string>;
   getRunArtifacts(): RunArtifacts;
   isRunCreated(): boolean;
 }

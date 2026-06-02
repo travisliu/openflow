@@ -8,6 +8,7 @@ import type {
   ProviderConfig
 } from "./types.js";
 import { runProcess } from "./process-runner.js";
+import { shouldRedactEnvName } from "../security/env.js";
 
 export interface CodexProviderConfig extends ProviderConfig {
   promptMode?: "stdin" | "arg";
@@ -69,11 +70,18 @@ export class CodexExecAdapter implements AgentAdapter {
       args.push(input.prompt);
     }
 
+    const filteredEnv: Record<string, string> = {};
+    for (const [key, value] of Object.entries(input.env)) {
+      if (!shouldRedactEnvName(key)) {
+        filteredEnv[key] = value;
+      }
+    }
+
     const cmd: ProviderCommand = {
       command,
       args,
       cwd: input.cwd,
-      env: input.env
+      env: filteredEnv
     };
     if (stdin !== undefined) {
       cmd.stdin = stdin;

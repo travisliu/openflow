@@ -1,0 +1,13 @@
+providers:
+  mock:
+    responses:
+      structured-agent:
+        json:
+          findings: ["finding 1", "finding 2"]
+      schema-fail-agent:
+        json:
+          error: "something went wrong"
+      malformed-json-agent:
+        stdout: '{ "findings": [ }'
+      plaintext-agent:
+        text: "This is some plain text output."

@@ -8,6 +8,7 @@ import type {
   ProviderConfig
 } from "./types.js";
 import { runProcess } from "./process-runner.js";
+import { shouldRedactEnvName } from "../security/env.js";
 
 export interface GeminiProviderConfig extends ProviderConfig {
   promptFlag?: string;
@@ -66,11 +67,21 @@ export class GeminiCliAdapter implements AgentAdapter {
       args.push(modelFlag, model);
     }
 
+    // Filter environment variables according to security policy
+    const filteredEnv: Record<string, string> = {};
+    if (input.env) {
+      for (const [key, value] of Object.entries(input.env)) {
+        if (!shouldRedactEnvName(key)) {
+          filteredEnv[key] = value;
+        }
+      }
+    }
+
     return {
       command,
       args,
       cwd: input.cwd,
-      env: input.env
+      env: filteredEnv
     };
   }
 

@@ -150,7 +150,7 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
             });
           }
           if (deps.artifactStore) {
-            await deps.artifactStore.updateManifest("failed");
+            await deps.artifactStore.updateManifest("failed", result.error);
           }
           return result;
         } else {
@@ -164,39 +164,39 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
             });
           }
           if (deps.artifactStore) {
-            await deps.artifactStore.updateManifest("cancelled");
+            await deps.artifactStore.updateManifest("cancelled", result.error);
           }
           return result;
         }
-      }
+        }
 
-      // Build succeeded run result
-      const result = buildSucceededRunResult(runtime, workflowResult, durationMs, finishTime.toISOString(), deps.artifactStore);
-      if (deps.eventSink) {
+        // Build succeeded run result
+        const result = buildSucceededRunResult(runtime, workflowResult, durationMs, finishTime.toISOString(), deps.artifactStore);
+        if (deps.eventSink) {
         deps.eventSink.emit("workflow.completed", {
           status: "succeeded",
           durationMs,
           result: workflowResult
         });
-      }
-      if (deps.artifactStore) {
+        }
+        if (deps.artifactStore) {
         await deps.artifactStore.updateManifest("succeeded");
-      }
-      return result;
-    } catch (err: any) {
-      // Scheduler drain to ensure everything settles
-      try {
+        }
+        return result;
+        } catch (err: any) {
+        // Scheduler drain to ensure everything settles
+        try {
         await scheduler.drain();
-      } catch {
+        } catch {
         // Ignore errors during final drain
-      }
+        }
 
-      const finishTime = deps.clock ? deps.clock.now() : new Date();
-      const durationMs = finishTime.getTime() - startTime.getTime();
+        const finishTime = deps.clock ? deps.clock.now() : new Date();
+        const durationMs = finishTime.getTime() - startTime.getTime();
 
-      const isCancelled = runtimeAbortController.signal.aborted || err.name === "WorkflowCancelledError";
-      
-      if (isCancelled) {
+        const isCancelled = runtimeAbortController.signal.aborted || err.name === "WorkflowCancelledError";
+
+        if (isCancelled) {
         const result = buildCancelledRunResult(runtime, durationMs, finishTime.toISOString(), err.message, deps.artifactStore);
         if (deps.eventSink) {
           deps.eventSink.emit("workflow.cancelled", {
@@ -206,10 +206,10 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
           });
         }
         if (deps.artifactStore) {
-          await deps.artifactStore.updateManifest("cancelled");
+          await deps.artifactStore.updateManifest("cancelled", result.error);
         }
         return result;
-      } else {
+        } else {
         const result = buildFailedRunResult(runtime, err, durationMs, finishTime.toISOString(), deps.artifactStore);
         if (deps.eventSink) {
           deps.eventSink.emit("workflow.failed", {
@@ -219,11 +219,11 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
           });
         }
         if (deps.artifactStore) {
-          await deps.artifactStore.updateManifest("failed");
+          await deps.artifactStore.updateManifest("failed", result.error);
         }
         return result;
-      }
-    }
+        }
+        }
   }
 }
 
@@ -253,7 +253,9 @@ export async function executeWorkflowModule(runtime: RuntimeState): Promise<unkn
     return (context as any).__default;
   } catch (err: any) {
     // Check if it's already an ExecflowError (e.g. from DSL)
-    if (err instanceof ExecflowError) {
+    // We check both instanceof and the presence of the 'code' property 
+    // to handle errors coming from the VM context.
+    if (err instanceof ExecflowError || (err && typeof err === "object" && "code" in err && "name" in err && err.name === "ExecflowError")) {
       throw err;
     }
 

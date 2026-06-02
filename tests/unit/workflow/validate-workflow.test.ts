@@ -30,7 +30,7 @@ describe("Validate Workflow Restrictions", () => {
       const fs = require("fs");
     `);
     const issues = validateWorkflow(parsed, options);
-    expect(issues.some(i => i.message.includes("Direct module access"))).toBe(true);
+    expect(issues.some(i => i.message.includes("require() is not supported"))).toBe(true);
   });
 
   it("flags import statements", () => {
