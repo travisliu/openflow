@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../../src/config/load.js";
-import { ExecflowError } from "../../../src/errors/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
 import { resolve, isAbsolute } from "node:path";
 
 describe("Load Config", () => {
   it("no config file uses defaults", async () => {
     const config = await loadConfig({
-      cwd: "tests/fixtures/config", // point to a place with no .execflow/config.yaml
+      cwd: "tests/fixtures/config", // point to a place with no .openflow/config.yaml
       cli: {}
     });
 
@@ -22,7 +22,7 @@ describe("Load Config", () => {
         configPath: "nonexistent-config.yaml",
         cli: {}
       })
-    ).rejects.toThrow(ExecflowError);
+    ).rejects.toThrow(OpenFlowError);
 
     try {
       await loadConfig({
@@ -42,7 +42,7 @@ describe("Load Config", () => {
         configPath: "tests/fixtures/config/invalid-concurrency.yaml", // concurrency: 0 is validation fail, but wait, invalid YAML like syntax error:
         cli: {}
       })
-    ).rejects.toThrow(ExecflowError);
+    ).rejects.toThrow(OpenFlowError);
   });
 
   it("valid YAML loads", async () => {

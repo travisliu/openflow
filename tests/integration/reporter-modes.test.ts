@@ -26,7 +26,7 @@ async function runCli(args: string[]) {
 
   let error: any = null;
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -138,7 +138,7 @@ providers:
     }, `Expected stdout to be valid JSON, but got: ${stdout}`).not.toThrow();
 
     // Assert: stdout parses as WorkflowRunResult and includes required fields
-    expect(parsed.schemaVersion).toBe("execflow.report.v1");
+    expect(parsed.schemaVersion).toBe("openflow.report.v1");
     expect(typeof parsed.runId).toBe("string");
     expect(parsed.status).toBe("succeeded");
     expect(parsed.meta).toBeDefined();

@@ -1,6 +1,6 @@
 node_modules/
 dist/
-.execflow/
+.openflow/
 coverage/
 *.log
 .DS_Store

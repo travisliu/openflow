@@ -22,7 +22,7 @@ export interface SecurityConfig {
   allowWorkflowImports: false;
 }
 
-export interface ExecflowConfig {
+export interface OpenFlowConfig {
   defaultProvider: ProviderName;
   concurrency: number;
   timeoutMs: number;
@@ -36,7 +36,7 @@ export interface ExecflowConfig {
   failFast?: boolean;
 }
 
-export interface ResolvedExecflowConfig extends ExecflowConfig {
+export interface ResolvedOpenFlowConfig extends OpenFlowConfig {
   configPath?: string;
   cwd: string;
   outDir: string;

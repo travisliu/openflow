@@ -91,10 +91,10 @@ describe("PrettyReporter", () => {
     const reporter = new PrettyReporter(streams);
 
     reporter.finish({
-      artifactsDir: ".execflow/runs/123"
+      artifactsDir: ".openflow/runs/123"
     } as any);
 
-    expect(getStdout()).toBe("Artifacts: .execflow/runs/123\n");
+    expect(getStdout()).toBe("Artifacts: .openflow/runs/123\n");
   });
 
   it("agent.output is hidden unless verbose is true", () => {

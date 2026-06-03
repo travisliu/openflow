@@ -1,11 +1,11 @@
 {
-  "name": "execflow",
+  "name": "openflow",
   "version": "0.1.0",
   "description": "Local-first workflow CLI for orchestrating coding-agent CLIs.",
   "type": "module",
   "private": true,
   "bin": {
-    "execflow": "./dist/index.js"
+    "openflow": "./dist/index.js"
   },
   "files": [
     "dist",

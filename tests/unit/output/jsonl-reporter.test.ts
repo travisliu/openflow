@@ -27,7 +27,7 @@ function createMockStreams() {
 
 describe("JsonlReporter", () => {
   const dummyEvent: EventEnvelope = {
-    schemaVersion: "execflow.event.v1",
+    schemaVersion: "openflow.event.v1",
     runId: "run-1",
     sequence: 1,
     timestamp: "2026-06-02T00:00:00.000Z",

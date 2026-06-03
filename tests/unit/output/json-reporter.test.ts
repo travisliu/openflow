@@ -26,7 +26,7 @@ function createMockStreams() {
 
 describe("JsonReporter", () => {
   const dummyResult = {
-    schemaVersion: "execflow.report.v1",
+    schemaVersion: "openflow.report.v1",
     runId: "run-1",
     status: "succeeded",
     meta: { name: "my-flow", description: "" },

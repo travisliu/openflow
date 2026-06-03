@@ -49,7 +49,7 @@ function makeRuntimeState(overrides: Partial<RuntimeState> = {}): RuntimeState {
     security: { allowShell: false, allowWorkflowImports: false, passEnv: [], redactEnv: [] },
     reporting: { mode: "pretty", verbose: false },
     cwd: "/workspace",
-    outDir: "/workspace/.execflow/runs",
+    outDir: "/workspace/.openflow/runs",
     cliArgs: {}
   };
 
@@ -59,7 +59,7 @@ function makeRuntimeState(overrides: Partial<RuntimeState> = {}): RuntimeState {
     config,
     args: {},
     cwd: "/workspace",
-    artifactsDir: "/workspace/.execflow/runs/run-test-1",
+    artifactsDir: "/workspace/.openflow/runs/run-test-1",
     agentResults: [],
     scheduler: makeSchedulerStub() as any,
     agentExecutor: { execute: vi.fn() },

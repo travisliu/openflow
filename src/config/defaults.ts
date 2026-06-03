@@ -1,6 +1,6 @@
-import type { ExecflowConfig } from "./types.js";
+import type { OpenFlowConfig } from "./types.js";
 
-export const DEFAULT_CONFIG: ExecflowConfig = {
+export const DEFAULT_CONFIG: OpenFlowConfig = {
   defaultProvider: "mock",
   concurrency: 4,
   timeoutMs: 900_000,

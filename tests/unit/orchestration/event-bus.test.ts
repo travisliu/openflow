@@ -28,7 +28,7 @@ describe("EventBus", () => {
 
     const event1 = await bus.emit("workflow.started", { workflowPath: "foo.js", artifactsDir: "bar" });
     expect(event1.sequence).toBe(1);
-    expect(event1.schemaVersion).toBe("execflow.event.v1");
+    expect(event1.schemaVersion).toBe("openflow.event.v1");
     expect(event1.runId).toBe("run-abc");
     expect(event1.timestamp).toBe(now.toISOString());
     expect(event1.type).toBe("workflow.started");

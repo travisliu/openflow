@@ -4,7 +4,7 @@ export interface CreateManifestInput {
   runId: string;
   workflowPath: string;
   workflowHash: string;
-  execflowVersion: string;
+  openflowVersion: string;
   cwd: string;
   configPath?: string | undefined;
   now?: Date;
@@ -13,14 +13,14 @@ export interface CreateManifestInput {
 export function createInitialManifest(input: CreateManifestInput): RunManifest {
   const timestamp = (input.now || new Date()).toISOString();
   return {
-    schemaVersion: "execflow.manifest.v1",
+    schemaVersion: "openflow.manifest.v1",
     runId: input.runId,
     status: "running",
     createdAt: timestamp,
     updatedAt: timestamp,
     workflowPath: input.workflowPath,
     workflowHash: input.workflowHash,
-    execflowVersion: input.execflowVersion,
+    openflowVersion: input.openflowVersion,
     cwd: input.cwd,
     configPath: input.configPath
   };

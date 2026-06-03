@@ -90,7 +90,7 @@ const defaultResolvedConfig: ResolvedConfig = {
     verbose: false
   },
   cwd: "/workspace",
-  outDir: "/workspace/.execflow/runs"
+  outDir: "/workspace/.openflow/runs"
 };
 
 describe("DefaultRuntimeRunner", () => {

@@ -28,7 +28,7 @@ export type EventType =
   | "pipeline.stage.failed";
 
 export interface EventEnvelope<TPayload = unknown> {
-  schemaVersion: "execflow.event.v1";
+  schemaVersion: "openflow.event.v1";
   runId: string;
   sequence: number;
   timestamp: string;
@@ -224,7 +224,7 @@ export function isEventEnvelope(value: unknown): value is EventEnvelope {
   return Boolean(
     value &&
       typeof value === "object" &&
-      (value as EventEnvelope).schemaVersion === "execflow.event.v1" &&
+      (value as EventEnvelope).schemaVersion === "openflow.event.v1" &&
       typeof (value as EventEnvelope).runId === "string" &&
       typeof (value as EventEnvelope).sequence === "number" &&
       typeof (value as EventEnvelope).timestamp === "string" &&

@@ -1,4 +1,4 @@
-import type { ExecflowConfig } from "./types.js";
+import type { OpenFlowConfig } from "./types.js";
 
 export interface ConfigCliOverrides {
   provider?: string | undefined;
@@ -10,10 +10,10 @@ export interface ConfigCliOverrides {
 }
 
 export function mergeConfig(
-  defaults: ExecflowConfig,
-  fileConfig: Partial<ExecflowConfig>,
+  defaults: OpenFlowConfig,
+  fileConfig: Partial<OpenFlowConfig>,
   cli: ConfigCliOverrides
-): ExecflowConfig {
+): OpenFlowConfig {
   const mergedProviders = { ...defaults.providers };
   if (fileConfig.providers) {
     for (const [key, value] of Object.entries(fileConfig.providers)) {
@@ -26,7 +26,7 @@ export function mergeConfig(
     }
   }
 
-  const merged: ExecflowConfig = {
+  const merged: OpenFlowConfig = {
     ...defaults,
     ...fileConfig,
     providers: mergedProviders,

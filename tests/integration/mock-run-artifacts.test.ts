@@ -21,7 +21,7 @@ async function runCli(args: string[]) {
 
   let error: unknown = null;
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -83,7 +83,7 @@ describe("Integration - mock run artifact layout", () => {
 
     // Validate manifest content
     const manifest = JSON.parse(await fs.readFile(path.join(runDir, "manifest.json"), "utf8"));
-    expect(manifest.schemaVersion).toBe("execflow.manifest.v1");
+    expect(manifest.schemaVersion).toBe("openflow.manifest.v1");
     expect(manifest.status).toBe("succeeded");
     expect(manifest.runId).toBe(runId);
     expect(typeof manifest.createdAt).toBe("string");
@@ -109,7 +109,7 @@ describe("Integration - mock run artifact layout", () => {
 
     // Validate report.json content
     const report = JSON.parse(await fs.readFile(path.join(runDir, "report.json"), "utf8"));
-    expect(report.schemaVersion).toBe("execflow.report.v1");
+    expect(report.schemaVersion).toBe("openflow.report.v1");
     expect(report.runId).toBe(runId);
     expect(report.status).toBe("succeeded");
 
@@ -121,7 +121,7 @@ describe("Integration - mock run artifact layout", () => {
     const events = eventLines.map((l) => JSON.parse(l));
     // Verify all events have the correct schema version
     for (const event of events) {
-      expect(event.schemaVersion).toBe("execflow.event.v1");
+      expect(event.schemaVersion).toBe("openflow.event.v1");
     }
     // Sort by sequence and verify monotonic increase (out-of-order appends are
     // possible with parallel agents, but all sequence numbers should be unique and > 0)

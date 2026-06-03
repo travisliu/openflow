@@ -1,5 +1,5 @@
 import { ErrorCode } from "../errors/codes.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 
 export type CommandName = "run" | "validate" | "doctor";
 export type ReportMode = "pretty" | "json" | "jsonl";
@@ -39,7 +39,7 @@ export function parseKeyValueArgs(values: string[]): Record<string, string> {
   for (const val of values) {
     const index = val.indexOf("=");
     if (index === -1) {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.CLI_USAGE_ERROR,
         `Invalid argument format: '${val}'. Arguments must be in key=value format.`
       );
@@ -47,7 +47,7 @@ export function parseKeyValueArgs(values: string[]): Record<string, string> {
     const key = val.substring(0, index).trim();
     const value = val.substring(index + 1);
     if (!key) {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.CLI_USAGE_ERROR,
         `Invalid argument format: '${val}'. Key cannot be empty.`
       );
@@ -60,7 +60,7 @@ export function parseKeyValueArgs(values: string[]): Record<string, string> {
 export function parsePositiveInteger(value: string, optionName: string): number {
   const num = Number(value);
   if (!Number.isInteger(num) || num <= 0 || String(num) !== value) {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.CLI_USAGE_ERROR,
       `Invalid option value for '${optionName}': '${value}'. Must be a positive integer.`
     );
@@ -70,7 +70,7 @@ export function parsePositiveInteger(value: string, optionName: string): number 
 
 export function parseReportMode(value: string): ReportMode {
   if (value !== "pretty" && value !== "json" && value !== "jsonl") {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.CLI_USAGE_ERROR,
       `Invalid report mode: '${value}'. Must be one of: pretty, json, jsonl.`
     );

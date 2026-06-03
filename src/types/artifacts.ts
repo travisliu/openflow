@@ -10,14 +10,14 @@ export interface AgentArtifacts {
 }
 
 export interface RunManifest {
-  schemaVersion: "execflow.manifest.v1";
+  schemaVersion: "openflow.manifest.v1";
   runId: string;
   status: "running" | "succeeded" | "failed" | "cancelled";
   createdAt: string;
   updatedAt: string;
   workflowPath: string;
   workflowHash: string;
-  execflowVersion: string;
+  openflowVersion: string;
   cwd: string;
   configPath?: string | undefined;
   error?: any;
@@ -30,7 +30,7 @@ export interface CreateRunInput {
   workflowSource: string;
   workflowHash: string;
   resolvedConfig: unknown;
-  execflowVersion: string;
+  openflowVersion: string;
   cwd: string;
   configPath?: string | undefined;
 }

@@ -6,7 +6,7 @@ import { validateCommand } from "./commands/validate.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { exitCodeForError } from "../errors/exit-codes.js";
 import { serializeError } from "../errors/serialize.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 
 function collectArgs(value: string, previous: string[]): string[] {
@@ -18,7 +18,7 @@ export async function main(argv: string[]): Promise<void> {
   const program = new Command();
 
   program
-    .name("execflow")
+    .name("openflow")
     .description("Orchestrate coding-agent CLI workflows")
     .version("0.1.0")
     .exitOverride((err) => {
@@ -26,7 +26,7 @@ export async function main(argv: string[]): Promise<void> {
         throw err;
       }
       // Throw CLI usage error on command parsing errors
-      throw new ExecflowError(ErrorCode.CLI_USAGE_ERROR, err.message, { cause: err });
+      throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, err.message, { cause: err });
     });
 
   program
@@ -49,13 +49,13 @@ export async function main(argv: string[]): Promise<void> {
     .option("--retry", "Retry count (unsupported)")
     .action(async (workflowFile, options) => {
       if (options.allowShell) {
-        throw new ExecflowError(ErrorCode.CLI_USAGE_ERROR, "--allow-shell is not supported in the MVP.");
+        throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, "--allow-shell is not supported in the MVP.");
       }
       if (options.isolation) {
-        throw new ExecflowError(ErrorCode.CLI_USAGE_ERROR, `--isolation is not supported in the MVP.`);
+        throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, `--isolation is not supported in the MVP.`);
       }
       if (options.retry) {
-        throw new ExecflowError(ErrorCode.CLI_USAGE_ERROR, "--retry is not supported in the MVP.");
+        throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, "--retry is not supported in the MVP.");
       }
       await runCommand({ workflowFile, rawOptions: options });
     });
@@ -68,7 +68,7 @@ export async function main(argv: string[]): Promise<void> {
     .option("-v, --verbose", "Enable verbose logging")
     .action(async (workflowFile, options) => {
       if (!workflowFile) {
-        throw new ExecflowError(ErrorCode.CLI_USAGE_ERROR, "Missing <workflow-file>");
+        throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, "Missing <workflow-file>");
       }
       await validateCommand({ workflowFile, rawOptions: options });
     });
@@ -101,7 +101,7 @@ export async function main(argv: string[]): Promise<void> {
 // Execute CLI only when run directly as binary script
 const isMain =
   import.meta.url === `file://${process.argv[1]}` ||
-  process.argv[1]?.endsWith("/execflow") ||
+  process.argv[1]?.endsWith("/openflow") ||
   process.argv[1]?.endsWith("/cli/index.js") ||
   process.argv[1]?.endsWith("/dist/cli/index.js");
 

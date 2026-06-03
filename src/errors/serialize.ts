@@ -1,10 +1,10 @@
-import { ExecflowError } from "./types.js";
+import { OpenFlowError } from "./types.js";
 import type { SerializedError } from "./types.js";
 
 export function serializeError(error: unknown): SerializedError {
-  const isExecflowError = error instanceof ExecflowError || (error && typeof error === "object" && "code" in error && "name" in error && (error as any).name === "ExecflowError");
+  const isOpenFlowError = error instanceof OpenFlowError || (error && typeof error === "object" && "code" in error && "name" in error && (error as any).name === "OpenFlowError");
 
-  if (isExecflowError) {
+  if (isOpenFlowError) {
     const execErr = error as any;
     const res: SerializedError = {
       name: execErr.name,

@@ -45,7 +45,7 @@ describe("Timeout handling (Unit)", () => {
       workflowSource: "",
       workflowHash: "hash",
       resolvedConfig: config,
-      execflowVersion: "1.0.0",
+      openflowVersion: "1.0.0",
       cwd: process.cwd()
     });
 

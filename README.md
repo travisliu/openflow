@@ -1,6 +1,6 @@
-# ExecFlow CLI
+# OpenFlow CLI
 
-ExecFlow is a local-first command-line workflow runner for orchestrating coding-agent CLIs such as `codex exec` and `gemini -p`.
+OpenFlow is a local-first command-line workflow runner for orchestrating coding-agent CLIs such as `codex exec` and `gemini -p`.
 
 It lets engineers define constrained JavaScript-like workflows, run agent tasks sequentially or in parallel, capture structured results, and persist durable run artifacts for local debugging and CI automation.
 
@@ -8,9 +8,9 @@ It lets engineers define constrained JavaScript-like workflows, run agent tasks 
 
 ---
 
-## Why ExecFlow?
+## Why OpenFlow?
 
-Modern coding agents are useful from the terminal, but larger engineering tasks often need more than one prompt or one agent run. ExecFlow provides a small orchestration layer around external coding-agent CLIs so you can:
+Modern coding agents are useful from the terminal, but larger engineering tasks often need more than one prompt or one agent run. OpenFlow provides a small orchestration layer around external coding-agent CLIs so you can:
 
 - Split large engineering tasks into repeatable workflow files.
 - Run multiple agent reviews in parallel.
@@ -20,7 +20,7 @@ Modern coding agents are useful from the terminal, but larger engineering tasks 
 - Use pretty terminal output locally or JSON/JSONL output in CI.
 - Keep provider-specific details out of workflow logic.
 
-ExecFlow does **not** implement its own coding agent. It coordinates external provider CLIs.
+OpenFlow does **not** implement its own coding agent. It coordinates external provider CLIs.
 
 ---
 
@@ -28,9 +28,9 @@ ExecFlow does **not** implement its own coding agent. It coordinates external pr
 
 The MVP scope includes:
 
-- `execflow run <workflow-file>`
-- `execflow validate <workflow-file>`
-- `execflow doctor`
+- `openflow run <workflow-file>`
+- `openflow validate <workflow-file>`
+- `openflow doctor`
 - Constrained workflow metadata parsing
 - Workflow DSL functions:
   - `agent()`
@@ -46,7 +46,7 @@ The MVP scope includes:
 - Fail-fast mode
 - JSON Schema validation for structured agent output
 - Pretty, JSON, and JSONL reporters
-- Durable artifact directories under `.execflow/runs/<runId>`
+- Durable artifact directories under `.openflow/runs/<runId>`
 - Deterministic exit codes
 
 Deferred post-MVP features include `pipeline()`, plugin providers, retries, worktree/container isolation, resumable runs, approval gates, automatic patch application, and static HTML reports.
@@ -55,7 +55,7 @@ Deferred post-MVP features include `pipeline()`, plugin providers, retries, work
 
 ## Requirements
 
-ExecFlow is designed for Node.js-based projects and local or CI environments.
+OpenFlow is designed for Node.js-based projects and local or CI environments.
 
 Recommended baseline:
 
@@ -77,18 +77,18 @@ The `mock` provider is intended for tests, examples, and CI workflows that shoul
 Run without installing globally:
 
 ```bash
-npx execflow --help
-npx execflow doctor
-npx execflow validate workflows/review.ts
-npx execflow run workflows/review.ts
+npx openflow --help
+npx openflow doctor
+npx openflow validate workflows/review.ts
+npx openflow run workflows/review.ts
 ```
 
 ### Global installation
 
 ```bash
-npm install -g execflow
-execflow --help
-execflow doctor
+npm install -g openflow
+openflow --help
+openflow doctor
 ```
 
 ### Local development
@@ -104,8 +104,8 @@ npx . run workflows/review.ts
 
 ```bash
 npm pack
-npx ./execflow-0.1.0.tgz --help
-npx ./execflow-0.1.0.tgz doctor
+npx ./openflow-0.1.0.tgz --help
+npx ./openflow-0.1.0.tgz doctor
 ```
 
 ---
@@ -154,19 +154,19 @@ export default {
 Run it:
 
 ```bash
-execflow run workflows/review.ts
+openflow run workflows/review.ts
 ```
 
 Validate it without invoking providers:
 
 ```bash
-execflow validate workflows/review.ts
+openflow validate workflows/review.ts
 ```
 
 Run a dry run:
 
 ```bash
-execflow run workflows/review.ts --dry-run
+openflow run workflows/review.ts --dry-run
 ```
 
 ---
@@ -196,19 +196,19 @@ export default result;
 Run:
 
 ```bash
-execflow run workflows/mock-review.ts --provider mock
+openflow run workflows/mock-review.ts --provider mock
 ```
 
 ---
 
 ## CLI Commands
 
-### `execflow run`
+### `openflow run`
 
 Runs a workflow file.
 
 ```bash
-execflow run <workflow-file> [options]
+openflow run <workflow-file> [options]
 ```
 
 Common options:
@@ -230,27 +230,27 @@ Common options:
 Examples:
 
 ```bash
-execflow run workflows/review.ts
-execflow run workflows/review.ts --provider codex
-execflow run workflows/review.ts --concurrency 2
-execflow run workflows/review.ts --timeout-ms 600000
-execflow run workflows/review.ts --report json
-execflow run workflows/review.ts --report jsonl
-execflow run workflows/review.ts --fail-fast
+openflow run workflows/review.ts
+openflow run workflows/review.ts --provider codex
+openflow run workflows/review.ts --concurrency 2
+openflow run workflows/review.ts --timeout-ms 600000
+openflow run workflows/review.ts --report json
+openflow run workflows/review.ts --report jsonl
+openflow run workflows/review.ts --fail-fast
 ```
 
-### `execflow validate`
+### `openflow validate`
 
 Validates workflow metadata, syntax, and restricted behavior.
 
 ```bash
-execflow validate <workflow-file>
+openflow validate <workflow-file>
 ```
 
 Example:
 
 ```bash
-execflow validate workflows/review.ts
+openflow validate workflows/review.ts
 ```
 
 Validation checks include:
@@ -261,12 +261,12 @@ Validation checks include:
 - Unsupported imports and restricted APIs are rejected.
 - Unsupported DSL functions such as `pipeline()` are rejected in MVP.
 
-### `execflow doctor`
+### `openflow doctor`
 
 Checks local environment readiness.
 
 ```bash
-execflow doctor
+openflow doctor
 ```
 
 Typical checks:
@@ -324,7 +324,7 @@ export const meta = {
 
 ## Workflow DSL
 
-ExecFlow workflows run in a constrained runtime. The MVP exposes a small DSL.
+OpenFlow workflows run in a constrained runtime. The MVP exposes a small DSL.
 
 ### `agent(input)`
 
@@ -429,7 +429,7 @@ const result = await agent({
 });
 ```
 
-When a schema is provided, ExecFlow attempts to normalize provider output in this order:
+When a schema is provided, OpenFlow attempts to normalize provider output in this order:
 
 1. Provider-native structured output, when available.
 2. Provider JSON output, when available.
@@ -442,10 +442,10 @@ A validation failure is returned as a failed agent result and persisted as an ar
 
 ## Configuration
 
-By default, ExecFlow loads:
+By default, OpenFlow loads:
 
 ```text
-.execflow/config.yaml
+.openflow/config.yaml
 ```
 
 Example:
@@ -505,17 +505,17 @@ Model selection can be configured globally, per provider, on the command line, o
 
 ### Precedence Rules
 
-When resolving which model to use for an agent task, ExecFlow applies the following precedence (from strongest to weakest):
+When resolving which model to use for an agent task, OpenFlow applies the following precedence (from strongest to weakest):
 
 1. **Per-agent model**: Defined explicitly in the workflow script: `agent({ model: "model-name" })`.
-2. **CLI override**: Provided via the `--model` (or `-m`) option: `execflow run workflow.ts --model model-name`.
-3. **Provider-specific default model**: Configured in `.execflow/config.yaml` under `providers.<provider>.defaultModel`.
-4. **Global default model**: Configured in `.execflow/config.yaml` under `defaultModel`.
+2. **CLI override**: Provided via the `--model` (or `-m`) option: `openflow run workflow.ts --model model-name`.
+3. **Provider-specific default model**: Configured in `.openflow/config.yaml` under `providers.<provider>.defaultModel`.
+4. **Global default model**: Configured in `.openflow/config.yaml` under `defaultModel`.
 5. **Provider default**: If no model is configured, the provider's CLI decides.
 
 ### Provider Flag Customization (`modelArg`)
 
-By default, the `codex` provider CLI uses `--model <model>` and the `gemini` provider CLI uses `-m <model>`. You can customize this flag or disable model selection entirely for any provider in `.execflow/config.yaml`:
+By default, the `codex` provider CLI uses `--model <model>` and the `gemini` provider CLI uses `-m <model>`. You can customize this flag or disable model selection entirely for any provider in `.openflow/config.yaml`:
 
 ```yaml
 defaultModel: gemini-2.5-flash # Global default model
@@ -535,14 +535,14 @@ providers:
 
 ## Reports
 
-ExecFlow supports three report modes.
+OpenFlow supports three report modes.
 
 ### Pretty
 
 Default local terminal output:
 
 ```bash
-execflow run workflows/review.ts --report pretty
+openflow run workflows/review.ts --report pretty
 ```
 
 Example output:
@@ -555,7 +555,7 @@ Example output:
   ✕ gemini-review      gemini   failed
 
 Artifacts:
-  .execflow/runs/20260602-abc123
+  .openflow/runs/20260602-abc123
 ```
 
 ### JSON
@@ -563,7 +563,7 @@ Artifacts:
 Prints only the final workflow report JSON object to stdout.
 
 ```bash
-execflow run workflows/review.ts --report json
+openflow run workflows/review.ts --report json
 ```
 
 ### JSONL
@@ -571,7 +571,7 @@ execflow run workflows/review.ts --report json
 Streams ordered execution events to stdout.
 
 ```bash
-execflow run workflows/review.ts --report jsonl
+openflow run workflows/review.ts --report jsonl
 ```
 
 JSONL is intended for CI jobs, dashboards, and tools that want to consume live workflow events.
@@ -583,7 +583,7 @@ JSONL is intended for CI jobs, dashboards, and tools that want to consume live w
 Every run creates a local artifact directory.
 
 ```text
-.execflow/runs/<runId>/
+.openflow/runs/<runId>/
   manifest.json
   workflow.input.ts
   config.resolved.json
@@ -622,7 +622,7 @@ Artifacts are always enabled so failed or partial runs remain debuggable.
 
 ## Safety Model
 
-ExecFlow is safe by default, but the MVP should not be described as a complete security sandbox.
+OpenFlow is safe by default, but the MVP should not be described as a complete security sandbox.
 
 Default MVP behavior:
 
@@ -634,7 +634,7 @@ Default MVP behavior:
 - Patches are never applied automatically.
 - Provider CLIs may still access files, network, and credentials according to their own behavior and permissions.
 
-Be careful before sharing `.execflow/runs/<runId>` artifacts, because they may contain prompts, source snippets, stdout, stderr, and model outputs.
+Be careful before sharing `.openflow/runs/<runId>` artifacts, because they may contain prompts, source snippets, stdout, stderr, and model outputs.
 
 ---
 
@@ -643,8 +643,8 @@ Be careful before sharing `.execflow/runs/<runId>` artifacts, because they may c
 Example GitHub Actions-style command:
 
 ```bash
-execflow validate workflows/review.ts
-execflow run workflows/review.ts \
+openflow validate workflows/review.ts
+openflow run workflows/review.ts \
   --provider mock \
   --report json \
   --concurrency 2 \
@@ -654,7 +654,7 @@ execflow run workflows/review.ts \
 For streaming logs:
 
 ```bash
-execflow run workflows/review.ts --report jsonl
+openflow run workflows/review.ts --report jsonl
 ```
 
 For deterministic CI tests, prefer the `mock` provider.
@@ -668,7 +668,7 @@ For deterministic CI tests, prefer the `mock` provider.
 Run:
 
 ```bash
-execflow doctor
+openflow doctor
 ```
 
 If `codex` or `gemini` is missing, install the relevant provider CLI and ensure it is available in `PATH`.
@@ -678,7 +678,7 @@ If `codex` or `gemini` is missing, install the relevant provider CLI and ensure 
 Run:
 
 ```bash
-execflow validate workflows/review.ts
+openflow validate workflows/review.ts
 ```
 
 Check that:
@@ -692,9 +692,9 @@ Check that:
 Inspect the run artifacts:
 
 ```bash
-cat .execflow/runs/<runId>/report.json
-cat .execflow/runs/<runId>/agents/<agentId>/stderr.log
-cat .execflow/runs/<runId>/agents/<agentId>/validation-error.json
+cat .openflow/runs/<runId>/report.json
+cat .openflow/runs/<runId>/agents/<agentId>/stderr.log
+cat .openflow/runs/<runId>/agents/<agentId>/validation-error.json
 ```
 
 ### Agent output failed schema validation
@@ -702,8 +702,8 @@ cat .execflow/runs/<runId>/agents/<agentId>/validation-error.json
 Check:
 
 ```bash
-.execflow/runs/<runId>/agents/<agentId>/raw-result.json
-.execflow/runs/<runId>/agents/<agentId>/validation-error.json
+.openflow/runs/<runId>/agents/<agentId>/raw-result.json
+.openflow/runs/<runId>/agents/<agentId>/validation-error.json
 ```
 
 Then update the prompt, schema, or provider output format.
@@ -798,7 +798,7 @@ Recommended test coverage:
 
 ## Design Principles
 
-ExecFlow follows these boundaries:
+OpenFlow follows these boundaries:
 
 1. Workflow DSL does not know provider-specific details.
 2. Runtime does not spawn processes directly.

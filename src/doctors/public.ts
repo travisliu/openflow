@@ -1,4 +1,4 @@
-import type { ResolvedExecflowConfig } from "../config/types.js";
+import type { ResolvedOpenFlowConfig } from "../config/types.js";
 
 export interface ProviderHealth {
   provider: string;
@@ -14,5 +14,5 @@ export interface DoctorResult {
 }
 
 export interface ProviderHealthChecker {
-  checkAll(config: ResolvedExecflowConfig): Promise<DoctorResult>;
+  checkAll(config: ResolvedOpenFlowConfig): Promise<DoctorResult>;
 }

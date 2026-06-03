@@ -1,5 +1,5 @@
 import { ErrorCode } from "./codes.js";
-import { ExecflowError } from "./types.js";
+import { OpenFlowError } from "./types.js";
 
 export const ExitCode = {
   Success: 0,
@@ -23,8 +23,8 @@ export function exitCodeForError(error: unknown): ExitCode {
       return ExitCode.Success;
     }
   }
-  const isExecflowError = error instanceof ExecflowError || (error && typeof error === "object" && "code" in error && "name" in error && (error as any).name === "ExecflowError");
-  if (!isExecflowError) return ExitCode.InternalError;
+  const isOpenFlowError = error instanceof OpenFlowError || (error && typeof error === "object" && "code" in error && "name" in error && (error as any).name === "OpenFlowError");
+  if (!isOpenFlowError) return ExitCode.InternalError;
 
   const code = (error as any).code;
   switch (code) {

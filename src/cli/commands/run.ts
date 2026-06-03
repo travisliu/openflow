@@ -1,5 +1,5 @@
 import { ErrorCode } from "../../errors/codes.js";
-import { ExecflowError } from "../../errors/types.js";
+import { OpenFlowError } from "../../errors/types.js";
 import { loadConfig } from "../../config/load.js";
 import { loadWorkflow } from "../../workflow/load.js";
 import { parseWorkflow } from "../../workflow/parse.js";
@@ -29,7 +29,7 @@ const defaultRuntimeRunner: RuntimeRunner = {
   async run(input): Promise<WorkflowRunResult> {
     const timeStr = new Date().toISOString();
     return {
-      schemaVersion: "execflow.report.v1",
+      schemaVersion: "openflow.report.v1",
       runId: "stub-run-id",
       status: "succeeded",
       durationMs: 0,
@@ -64,7 +64,7 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
     : undefined;
 
   if (rawOptions.model !== undefined && (typeof rawOptions.model !== "string" || rawOptions.model.trim() === "")) {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.CLI_USAGE_ERROR,
       "CLI option '--model' value must be a non-empty string."
     );
@@ -100,7 +100,7 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
 
   if (issues.length > 0) {
     const summary = issues.map((issue) => issue.message).join("\n");
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_VALIDATION_ERROR,
       `Workflow validation failed:\n${summary}`
     );
@@ -136,7 +136,7 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
     workflowSource: loaded.sourceText || "",
     workflowHash: parsed.sourceHash,
     resolvedConfig: config,
-    execflowVersion: parsed.meta.version || "0.0.0",
+    openflowVersion: parsed.meta.version || "0.0.0",
     cwd,
     configPath: rawOptions.config
   });
@@ -240,9 +240,9 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
       const errMessage = typeof result.error === "string"
         ? result.error
         : (result.error as any)?.message || "Workflow run failed";
-      throw new ExecflowError(errorCode, errMessage, { cause: result.error });
+      throw new OpenFlowError(errorCode, errMessage, { cause: result.error });
     } else if (result.status === "cancelled") {
-      throw new ExecflowError(ErrorCode.USER_CANCELLED, "Workflow run was cancelled");
+      throw new OpenFlowError(ErrorCode.USER_CANCELLED, "Workflow run was cancelled");
     }
   } finally {
     process.off("SIGINT", sigIntHandler);

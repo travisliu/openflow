@@ -27,7 +27,7 @@ async function runCli(args: string[]) {
   let error: any = null;
 
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -130,7 +130,7 @@ describe("Running a valid workflow", () => {
 
     // Assert required fields for every event
     for (const event of events) {
-      expect(event).toHaveProperty("schemaVersion", "execflow.event.v1");
+      expect(event).toHaveProperty("schemaVersion", "openflow.event.v1");
       expect(event).toHaveProperty("runId");
       expect(event).toHaveProperty("sequence");
       expect(event).toHaveProperty("timestamp");

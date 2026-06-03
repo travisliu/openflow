@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appendModelArg } from "../../../src/agents/model-args.js";
-import { ExecflowError } from "../../../src/errors/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
 
 describe("appendModelArg", () => {
   it("does not modify args if model is undefined", () => {
@@ -11,7 +11,7 @@ describe("appendModelArg", () => {
 
   it("throws MODEL_NOT_SUPPORTED when model is requested but modelArg is false", () => {
     const args: string[] = ["run"];
-    expect(() => appendModelArg(args, "some-model", false, "--model")).toThrow(ExecflowError);
+    expect(() => appendModelArg(args, "some-model", false, "--model")).toThrow(OpenFlowError);
     try {
       appendModelArg(args, "some-model", false, "--model");
     } catch (err: any) {

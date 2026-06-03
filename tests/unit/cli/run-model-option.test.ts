@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { runCommand } from "../../../src/cli/commands/run.js";
-import { ExecflowError } from "../../../src/errors/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
 import type { RuntimeRunner, WorkflowRunResult } from "../../../src/runtime/public.js";
 import { resolve } from "node:path";
 
@@ -9,7 +9,7 @@ describe("CLI Run Model Option", () => {
 
   it("CLI model option sets defaultModel in config and maps to run input cli properties", async () => {
     const runSpy = vi.fn().mockResolvedValue({
-      schemaVersion: "execflow.report.v1",
+      schemaVersion: "openflow.report.v1",
       runId: "test-run",
       status: "succeeded",
       durationMs: 10,
@@ -48,7 +48,7 @@ describe("CLI Run Model Option", () => {
         rawOptions: { model: "   " },
         deps: { runtimeRunner: mockRunner }
       })
-    ).rejects.toThrow(ExecflowError);
+    ).rejects.toThrow(OpenFlowError);
 
     try {
       await runCommand({

@@ -1,4 +1,4 @@
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 import type { ProviderModelArgConfig } from "../types/config.js";
 
@@ -13,7 +13,7 @@ export function appendModelArg(
   }
 
   if (modelArg === false) {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.MODEL_NOT_SUPPORTED,
       `Model selection is not supported by this provider, but model '${model}' was requested.`
     );

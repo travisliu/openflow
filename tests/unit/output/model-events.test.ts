@@ -22,7 +22,7 @@ describe("Model Events, Reports, and Artifacts", () => {
     const reporter = new PrettyReporter({ stdout: mockStdout } as any, { verbose: true });
 
     reporter.handle({
-      schemaVersion: "execflow.event.v1",
+      schemaVersion: "openflow.event.v1",
       runId: "run-1",
       sequence: 1,
       timestamp: new Date().toISOString(),
@@ -39,7 +39,7 @@ describe("Model Events, Reports, and Artifacts", () => {
     expect(writeMock).toHaveBeenCalledWith(expect.stringContaining("▶ agent-1 started [mock/gpt-4o]"));
 
     reporter.handle({
-      schemaVersion: "execflow.event.v1",
+      schemaVersion: "openflow.event.v1",
       runId: "run-1",
       sequence: 2,
       timestamp: new Date().toISOString(),
@@ -64,7 +64,7 @@ describe("Model Events, Reports, and Artifacts", () => {
     const reporter = new PrettyReporter({ stdout: mockStdout } as any, { verbose: false });
 
     reporter.handle({
-      schemaVersion: "execflow.event.v1",
+      schemaVersion: "openflow.event.v1",
       runId: "run-1",
       sequence: 1,
       timestamp: new Date().toISOString(),

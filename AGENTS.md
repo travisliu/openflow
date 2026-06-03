@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This file provides repository-specific guidance for Codex CLI and other coding agents working on ExecFlow.
+This file provides repository-specific guidance for Codex CLI and other coding agents working on OpenFlow.
 
-ExecFlow is a local-first workflow CLI that orchestrates external coding-agent CLIs such as `codex exec`, `gemini -p`, and the MVP `mock` provider. ExecFlow itself must not implement a coding agent. It provides orchestration, scheduling, provider adapters, structured validation, reporting, and durable artifact capture around external tools.
+OpenFlow is a local-first workflow CLI that orchestrates external coding-agent CLIs such as `codex exec`, `gemini -p`, and the MVP `mock` provider. OpenFlow itself must not implement a coding agent. It provides orchestration, scheduling, provider adapters, structured validation, reporting, and durable artifact capture around external tools.
 
 Keep this file focused and practical. Follow the MVP scope unless the user explicitly asks for post-MVP design work.
 
@@ -29,7 +29,7 @@ Respect these boundaries when changing code:
 Use this structure unless there is already a more specific structure in the repository:
 
 ```text
-execflow/
+openflow/
   package.json
   tsconfig.json
   src/
@@ -161,7 +161,7 @@ If the package uses pnpm or another package manager, use the repository's existi
 - Make focused changes.
 - Do not reformat unrelated files.
 - Do not update dependency versions unless required by the task.
-- Do not commit secrets, provider credentials, `.execflow/runs/`, or local `.codex` logs.
+- Do not commit secrets, provider credentials, `.openflow/runs/`, or local `.codex` logs.
 - Keep generated artifacts out of source control unless they are intentional fixtures.
 - When adding public behavior, update tests and examples.
 - When changing contracts, update all affected modules and tests in the same change.

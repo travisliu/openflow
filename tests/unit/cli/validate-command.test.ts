@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { validateCommand } from "../../../src/cli/commands/validate.js";
-import { ExecflowError } from "../../../src/errors/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
 import { resolve } from "node:path";
 
 describe("Validate Command", () => {
@@ -28,7 +28,7 @@ describe("Validate Command", () => {
         workflowFile: fixturePath,
         rawOptions: {}
       })
-    ).rejects.toThrow(ExecflowError);
+    ).rejects.toThrow(OpenFlowError);
 
     try {
       await validateCommand({

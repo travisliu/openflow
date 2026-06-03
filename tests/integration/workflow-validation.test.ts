@@ -29,7 +29,7 @@ async function runCli(args: string[]) {
   let error: any = null;
 
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {

@@ -2,12 +2,12 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import type { ArtifactStore, RunArtifacts, CreateRunInput, RunManifest } from "../types/artifacts.js";
 import { createInitialManifest, updateManifestStatus } from "./manifest.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 import { resolveUserPath, resolveProjectPath } from "../cli/paths.js";
 
 export function defaultRunsDir(cwd = process.cwd()): string {
-  return resolveProjectPath(".execflow/runs", cwd);
+  return resolveProjectPath(".openflow/runs", cwd);
 }
 
 export async function createRunDir(runId: string, cwd = process.cwd()): Promise<string> {
@@ -54,7 +54,7 @@ export class FileSystemArtifactStore implements ArtifactStore {
       runId: input.runId,
       workflowPath: input.workflowPath,
       workflowHash: input.workflowHash,
-      execflowVersion: input.execflowVersion,
+      openflowVersion: input.openflowVersion,
       cwd: input.cwd,
       configPath: input.configPath
     });
@@ -117,7 +117,7 @@ export class FileSystemArtifactStore implements ArtifactStore {
       await fs.rename(tmpPath, reportPath);
       return reportPath;
     } catch (error) {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.ARTIFACT_WRITE_FAILED,
         `Failed to write final report: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error }

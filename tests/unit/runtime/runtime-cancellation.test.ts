@@ -74,7 +74,7 @@ const defaultConfig: ResolvedConfig = {
   security: { allowShell: false, allowWorkflowImports: false, passEnv: [], redactEnv: [] },
   reporting: { mode: "pretty", verbose: false },
   cwd: "/workspace",
-  outDir: "/workspace/.execflow/runs",
+  outDir: "/workspace/.openflow/runs",
   cliArgs: {}
 };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseKeyValueArgs, parsePositiveInteger, parseReportMode } from "../../../src/cli/args.js";
-import { ExecflowError } from "../../../src/errors/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
 
 describe("CLI Options Parsing Helpers", () => {
   describe("parseKeyValueArgs", () => {
@@ -15,7 +15,7 @@ describe("CLI Options Parsing Helpers", () => {
     });
 
     it("throws CLI_USAGE_ERROR on invalid format without '='", () => {
-      expect(() => parseKeyValueArgs(["invalid_arg"])).toThrow(ExecflowError);
+      expect(() => parseKeyValueArgs(["invalid_arg"])).toThrow(OpenFlowError);
       try {
         parseKeyValueArgs(["invalid_arg"]);
       } catch (err: any) {
@@ -24,7 +24,7 @@ describe("CLI Options Parsing Helpers", () => {
     });
 
     it("throws CLI_USAGE_ERROR on empty key", () => {
-      expect(() => parseKeyValueArgs(["=value"])).toThrow(ExecflowError);
+      expect(() => parseKeyValueArgs(["=value"])).toThrow(OpenFlowError);
       try {
         parseKeyValueArgs(["=value"]);
       } catch (err: any) {
@@ -40,13 +40,13 @@ describe("CLI Options Parsing Helpers", () => {
     });
 
     it("throws CLI_USAGE_ERROR on non-integer", () => {
-      expect(() => parsePositiveInteger("3.14", "--concurrency")).toThrow(ExecflowError);
-      expect(() => parsePositiveInteger("abc", "--concurrency")).toThrow(ExecflowError);
+      expect(() => parsePositiveInteger("3.14", "--concurrency")).toThrow(OpenFlowError);
+      expect(() => parsePositiveInteger("abc", "--concurrency")).toThrow(OpenFlowError);
     });
 
     it("throws CLI_USAGE_ERROR on non-positive integer", () => {
-      expect(() => parsePositiveInteger("0", "--concurrency")).toThrow(ExecflowError);
-      expect(() => parsePositiveInteger("-5", "--concurrency")).toThrow(ExecflowError);
+      expect(() => parsePositiveInteger("0", "--concurrency")).toThrow(OpenFlowError);
+      expect(() => parsePositiveInteger("-5", "--concurrency")).toThrow(OpenFlowError);
     });
   });
 
@@ -58,7 +58,7 @@ describe("CLI Options Parsing Helpers", () => {
     });
 
     it("throws CLI_USAGE_ERROR on invalid report mode", () => {
-      expect(() => parseReportMode("xml")).toThrow(ExecflowError);
+      expect(() => parseReportMode("xml")).toThrow(OpenFlowError);
       try {
         parseReportMode("xml");
       } catch (err: any) {

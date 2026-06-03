@@ -2,7 +2,7 @@ import type { AgentAdapter, ResolvedConfig, MockProviderConfig } from "./types.j
 import { MockAdapter } from "./mock-adapter.js";
 import { CodexExecAdapter } from "./codex-exec.js";
 import { GeminiCliAdapter } from "./gemini-cli.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 
 export class ProviderRegistry {
@@ -18,7 +18,7 @@ export class ProviderRegistry {
   get(provider: string): AgentAdapter {
     const adapter = this.adapters.get(provider);
     if (!adapter) {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.PROVIDER_UNAVAILABLE,
         `Unknown provider: ${provider}`
       );

@@ -6,7 +6,7 @@ describe("manifest helpers", () => {
     runId: "run-123",
     workflowPath: "workflows/my-workflow.js",
     workflowHash: "hash-123",
-    execflowVersion: "1.0.0",
+    openflowVersion: "1.0.0",
     cwd: "/workspace",
     configPath: "config.yaml"
   };
@@ -16,9 +16,9 @@ describe("manifest helpers", () => {
     expect(manifest.status).toBe("running");
   });
 
-  it("schemaVersion is exactly execflow.manifest.v1", () => {
+  it("schemaVersion is exactly openflow.manifest.v1", () => {
     const manifest = createInitialManifest(defaultInput);
-    expect(manifest.schemaVersion).toBe("execflow.manifest.v1");
+    expect(manifest.schemaVersion).toBe("openflow.manifest.v1");
   });
 
   it("createdAt and updatedAt are ISO strings", () => {

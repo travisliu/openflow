@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { runCommand } from "../../../src/cli/commands/run.js";
-import { ExecflowError } from "../../../src/errors/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
 import type { RuntimeRunner, WorkflowRunResult } from "../../../src/runtime/public.js";
 import { resolve } from "node:path";
 
@@ -26,7 +26,7 @@ describe("Run Command", () => {
 
   it("valid non-dry-run calls runtime once", async () => {
     const runSpy = vi.fn().mockResolvedValue({
-      schemaVersion: "execflow.report.v1",
+      schemaVersion: "openflow.report.v1",
       runId: "test-run",
       status: "succeeded",
       durationMs: 10,
@@ -54,14 +54,14 @@ describe("Run Command", () => {
         rawOptions: {},
         deps: { runtimeRunner: mockRunner }
       })
-    ).rejects.toThrow(ExecflowError);
+    ).rejects.toThrow(OpenFlowError);
 
     expect(runSpy).not.toHaveBeenCalled();
   });
 
   it("runtime failed result maps to workflow failure", async () => {
     const runSpy = vi.fn().mockResolvedValue({
-      schemaVersion: "execflow.report.v1",
+      schemaVersion: "openflow.report.v1",
       runId: "test-run",
       status: "failed",
       durationMs: 10,
@@ -77,7 +77,7 @@ describe("Run Command", () => {
         rawOptions: {},
         deps: { runtimeRunner: mockRunner }
       })
-    ).rejects.toThrow(ExecflowError);
+    ).rejects.toThrow(OpenFlowError);
 
     try {
       await runCommand({
@@ -92,7 +92,7 @@ describe("Run Command", () => {
 
   it("CLI provider option sets default provider in runtime input", async () => {
     const runSpy = vi.fn().mockResolvedValue({
-      schemaVersion: "execflow.report.v1",
+      schemaVersion: "openflow.report.v1",
       runId: "test-run",
       status: "succeeded",
       durationMs: 10,

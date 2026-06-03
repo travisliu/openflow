@@ -14,7 +14,7 @@ import type { RuntimeState } from "./types.js";
 import { serializeError } from "../errors/serialize.js";
 import { createLinkedAbortController } from "../orchestration/cancellation.js";
 import { shouldTriggerFailFast } from "../orchestration/fail-fast.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 
 export interface Clock {
@@ -53,7 +53,7 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
     const runId = deps.idGenerator ? deps.idGenerator.nextId("run") : crypto.randomUUID();
 
     const cwd = input.cli.cwd || input.config.cwd || process.cwd();
-    const artifactsDir = input.cli.outDir || input.config.outDir || path.resolve(cwd, ".execflow/runs", runId);
+    const artifactsDir = input.cli.outDir || input.config.outDir || path.resolve(cwd, ".openflow/runs", runId);
 
     const scheduler = new DefaultScheduler(
       {
@@ -95,7 +95,7 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
         workflowSource: input.parsedWorkflow.sourceText || "",
         workflowHash: input.parsedWorkflow.sourceHash,
         resolvedConfig: input.config,
-        execflowVersion: input.parsedWorkflow.meta.version || "0.0.0",
+        openflowVersion: input.parsedWorkflow.meta.version || "0.0.0",
         cwd,
         configPath: input.config.configPath
       });
@@ -236,7 +236,7 @@ export async function executeWorkflowModule(runtime: RuntimeState): Promise<unkn
   try {
     context = createSandboxContext(runtime);
   } catch (err: any) {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.SECURITY_POLICY_VIOLATION,
       `Failed to create secure sandbox context: ${err.message}`,
       { cause: err }
@@ -256,10 +256,10 @@ export async function executeWorkflowModule(runtime: RuntimeState): Promise<unkn
     await promise;
     return (context as any).__default;
   } catch (err: any) {
-    // Check if it's already an ExecflowError (e.g. from DSL)
+    // Check if it's already an OpenFlowError (e.g. from DSL)
     // We check both instanceof and the presence of the 'code' property 
     // to handle errors coming from the VM context.
-    if (err instanceof ExecflowError || (err && typeof err === "object" && "code" in err && "name" in err && err.name === "ExecflowError")) {
+    if (err instanceof OpenFlowError || (err && typeof err === "object" && "code" in err && "name" in err && err.name === "OpenFlowError")) {
       throw err;
     }
 
@@ -267,7 +267,7 @@ export async function executeWorkflowModule(runtime: RuntimeState): Promise<unkn
     const isSecurityViolation = err.name === "SecurityError";
 
     if (isSecurityViolation) {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.SECURITY_POLICY_VIOLATION,
         `Workflow execution violated security policy: ${err.message}`,
         { cause: err }
@@ -290,7 +290,7 @@ export function buildSucceededRunResult(
   const eventsPath = runArtifacts?.eventsPath || path.join(runtime.artifactsDir, "events.jsonl");
 
   const result: WorkflowRunResult = {
-    schemaVersion: "execflow.report.v1",
+    schemaVersion: "openflow.report.v1",
     runId: runtime.runId,
     status: "succeeded",
     meta: runtime.parsedWorkflow.meta,
@@ -325,7 +325,7 @@ export function buildFailedRunResult(
   const serialized = serializeError(error);
 
   const result: WorkflowRunResult = {
-    schemaVersion: "execflow.report.v1",
+    schemaVersion: "openflow.report.v1",
     runId: runtime.runId,
     status: "failed",
     meta: runtime.parsedWorkflow.meta,
@@ -361,7 +361,7 @@ export function buildCancelledRunResult(
   };
 
   const result: WorkflowRunResult = {
-    schemaVersion: "execflow.report.v1",
+    schemaVersion: "openflow.report.v1",
     runId: runtime.runId,
     status: "cancelled",
     meta: runtime.parsedWorkflow.meta,

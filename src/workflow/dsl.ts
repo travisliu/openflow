@@ -3,7 +3,7 @@ import type { ScheduledTask, ScheduleOptions } from "../types/scheduler.js";
 import type { RuntimeState } from "./types.js";
 import { resolveAgentModel } from "../agents/resolve-model.js";
 import { InvalidDslCallError } from "./errors.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 import type { PipelineStage, PipelineOptions, PipelineResult } from "../pipeline/types.js";
 import { runPipeline } from "../pipeline/run.js";
@@ -158,7 +158,7 @@ export function createDsl(runtime: RuntimeState) {
       runtime.agentResults.push(result);
 
       if (!result.ok && result.error?.code === ErrorCode.PROVIDER_UNAVAILABLE) {
-        throw new ExecflowError(ErrorCode.PROVIDER_UNAVAILABLE, result.error.message);
+        throw new OpenFlowError(ErrorCode.PROVIDER_UNAVAILABLE, result.error.message);
       }
 
       return result;

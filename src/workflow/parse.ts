@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import ts from "typescript";
 import { ErrorCode } from "../errors/codes.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import type { LoadedWorkflow, ParsedWorkflow, WorkflowMeta } from "./types.js";
 
 function hashSource(sourceText: string): string {
@@ -17,7 +17,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
   );
 
   if (sourceFile.statements.length === 0) {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_PARSE_ERROR,
       "Workflow file is empty."
     );
@@ -37,7 +37,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
     firstDecl.name.text === "meta";
 
   if (!isVariable || !hasExport || !hasMetaName) {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_PARSE_ERROR,
       "Metadata ('export const meta') must be the first top-level statement."
     );
@@ -45,7 +45,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
 
   const initializer = firstDecl?.initializer;
   if (!initializer || !ts.isObjectLiteralExpression(initializer)) {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_PARSE_ERROR,
       "Metadata must be a literal object."
     );
@@ -54,7 +54,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
   const meta: any = {};
   for (const property of initializer.properties) {
     if (!ts.isPropertyAssignment(property)) {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.WORKFLOW_PARSE_ERROR,
         "Metadata properties must be standard property assignments."
       );
@@ -66,7 +66,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
     } else if (ts.isStringLiteral(property.name)) {
       keyName = property.name.text;
     } else {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.WORKFLOW_PARSE_ERROR,
         "Metadata keys must be identifiers or string literals."
       );
@@ -75,7 +75,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
     const value = property.initializer;
     if (keyName === "phases") {
       if (!ts.isArrayLiteralExpression(value)) {
-        throw new ExecflowError(
+        throw new OpenFlowError(
           ErrorCode.WORKFLOW_PARSE_ERROR,
           "Metadata phases must be an array literal of string literals."
         );
@@ -83,7 +83,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
       const phases: string[] = [];
       for (const element of value.elements) {
         if (!ts.isStringLiteral(element)) {
-          throw new ExecflowError(
+          throw new OpenFlowError(
             ErrorCode.WORKFLOW_PARSE_ERROR,
             "Metadata phases must contain only string literals."
           );
@@ -93,7 +93,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
       meta[keyName] = phases;
     } else if (keyName === "tags") {
       if (!ts.isArrayLiteralExpression(value)) {
-        throw new ExecflowError(
+        throw new OpenFlowError(
           ErrorCode.WORKFLOW_PARSE_ERROR,
           "Metadata tags must be an array literal of string literals."
         );
@@ -101,7 +101,7 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
       const tags: string[] = [];
       for (const element of value.elements) {
         if (!ts.isStringLiteral(element)) {
-          throw new ExecflowError(
+          throw new OpenFlowError(
             ErrorCode.WORKFLOW_PARSE_ERROR,
             "Metadata tags must contain only string literals."
           );
@@ -111,14 +111,14 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
       meta[keyName] = tags;
     } else if (keyName === "name" || keyName === "description" || keyName === "version") {
       if (!ts.isStringLiteral(value)) {
-        throw new ExecflowError(
+        throw new OpenFlowError(
           ErrorCode.WORKFLOW_PARSE_ERROR,
           `Metadata ${keyName} must be a string literal.`
         );
       }
       meta[keyName] = value.text;
     } else {
-      throw new ExecflowError(
+      throw new OpenFlowError(
         ErrorCode.WORKFLOW_PARSE_ERROR,
         `Unexpected metadata property: ${keyName}`
       );
@@ -126,13 +126,13 @@ export function parseWorkflow(loaded: LoadedWorkflow): ParsedWorkflow {
   }
 
   if (!meta.name || meta.name.trim() === "") {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_PARSE_ERROR,
       "Metadata name is required and cannot be empty."
     );
   }
   if (!meta.description || meta.description.trim() === "") {
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_PARSE_ERROR,
       "Metadata description is required and cannot be empty."
     );

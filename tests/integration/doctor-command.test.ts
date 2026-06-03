@@ -26,7 +26,7 @@ async function runCli(args: string[]) {
 
   let error: any = null;
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -43,7 +43,7 @@ async function runCli(args: string[]) {
   };
 }
 
-describe("execflow doctor", () => {
+describe("openflow doctor", () => {
   beforeEach(async () => {
     await fs.rm(TEMP_DIR, { recursive: true, force: true });
     await fs.mkdir(TEMP_DIR, { recursive: true });

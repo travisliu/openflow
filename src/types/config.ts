@@ -42,7 +42,7 @@ export interface ReportingConfig {
   verbose: boolean;
 }
 
-export interface ExecflowConfig {
+export interface OpenFlowConfig {
   defaultProvider: ProviderName;
   concurrency: number;
   timeoutMs: number;
@@ -53,7 +53,7 @@ export interface ExecflowConfig {
   reporting: ReportingConfig;
 }
 
-export interface ResolvedConfig extends ExecflowConfig {
+export interface ResolvedConfig extends OpenFlowConfig {
   cwd: string;
   outDir: string;
   configPath?: string;

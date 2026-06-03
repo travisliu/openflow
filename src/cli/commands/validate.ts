@@ -1,5 +1,5 @@
 import { ErrorCode } from "../../errors/codes.js";
-import { ExecflowError } from "../../errors/types.js";
+import { OpenFlowError } from "../../errors/types.js";
 import { loadConfig } from "../../config/load.js";
 import { loadWorkflow } from "../../workflow/load.js";
 import { parseWorkflow } from "../../workflow/parse.js";
@@ -42,7 +42,7 @@ export async function validateCommand(input: ValidateCommandInput): Promise<void
   if (issues.length > 0) {
     printValidationIssues(issues);
     const summary = issues.map((issue) => issue.message).join("\n");
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_VALIDATION_ERROR,
       `Workflow validation failed:\n${summary}`
     );

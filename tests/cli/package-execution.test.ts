@@ -19,7 +19,7 @@ describe("CLI package execution and installation", () => {
 
     // Pack the package
     const packOutput = execSync("npm pack", { cwd: WORKSPACE_DIR, encoding: "utf8" }).trim();
-    const tarballName = packOutput.split("\n").pop() || "execflow-0.1.0.tgz";
+    const tarballName = packOutput.split("\n").pop() || "openflow-0.1.0.tgz";
     packedTarballPath = path.resolve(WORKSPACE_DIR, tarballName);
   });
 
@@ -40,7 +40,7 @@ describe("CLI package execution and installation", () => {
   it("can execute npx . doctor", () => {
     const stdout = execSync("npx . doctor", { cwd: WORKSPACE_DIR, encoding: "utf8" });
     expect(stdout).toContain("Node.js >= 20");
-    expect(stdout).toContain("execflow 0.1.0");
+    expect(stdout).toContain("openflow 0.1.0");
     expect(stdout).toContain("Current directory writable");
   });
 
@@ -60,7 +60,7 @@ describe("CLI package execution and installation", () => {
     });
 
     const isWindows = process.platform === "win32";
-    const binaryName = isWindows ? "execflow.cmd" : "execflow";
+    const binaryName = isWindows ? "openflow.cmd" : "openflow";
     const globalBinPath = path.join(TEMP_NPM_DIR, isWindows ? "" : "bin", binaryName);
 
     expect(existsSync(globalBinPath)).toBe(true);
@@ -70,6 +70,6 @@ describe("CLI package execution and installation", () => {
 
     const doctorStdout = execSync(`"${globalBinPath}" doctor`, { encoding: "utf8" });
     expect(doctorStdout).toContain("Node.js >= 20");
-    expect(doctorStdout).toContain("execflow 0.1.0");
+    expect(doctorStdout).toContain("openflow 0.1.0");
   });
 });

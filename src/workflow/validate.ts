@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { ErrorCode } from "../errors/codes.js";
-import { ExecflowError } from "../errors/types.js";
+import { OpenFlowError } from "../errors/types.js";
 import type { ParsedWorkflow, WorkflowValidationIssue } from "./types.js";
 
 export interface ValidateWorkflowOptions {
@@ -194,7 +194,7 @@ export function assertWorkflowValid(
   const issues = validateWorkflow(workflow, options);
   if (issues.length > 0) {
     const summary = issues.map((issue) => `${issue.message}`).join("\n");
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.WORKFLOW_VALIDATION_ERROR,
       `Workflow validation failed:\n${summary}`
     );

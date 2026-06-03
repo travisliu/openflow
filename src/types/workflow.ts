@@ -44,7 +44,7 @@ export interface WorkflowRuntimeContext {
 }
 
 export interface WorkflowRunResult {
-  schemaVersion: "execflow.report.v1";
+  schemaVersion: "openflow.report.v1";
   runId: string;
   status: WorkflowStatus;
   meta: WorkflowMeta;

@@ -1,5 +1,5 @@
 import { ErrorCode } from "../../errors/codes.js";
-import { ExecflowError } from "../../errors/types.js";
+import { OpenFlowError } from "../../errors/types.js";
 import { loadConfig } from "../../config/load.js";
 import type { ProviderHealthChecker, DoctorResult } from "../../doctors/public.js";
 import { createDefaultProviderRegistry } from "../../agents/registry.js";
@@ -47,7 +47,7 @@ export async function doctorCommand(input: DoctorCommandInput): Promise<void> {
   const rawOptions = input.rawOptions || {};
   const cwd = rawOptions.cwd ?? process.cwd();
 
-  console.log("execflow doctor\n");
+  console.log("openflow doctor\n");
 
   // Node.js >= 20 check
   const nodeVersion = process.version;
@@ -58,8 +58,8 @@ export async function doctorCommand(input: DoctorCommandInput): Promise<void> {
     console.log(`✕ Node.js version is ${nodeVersion}, expected >= 20`);
   }
 
-  // execflow package version check
-  console.log("✓ execflow 0.1.0");
+  // openflow package version check
+  console.log("✓ openflow 0.1.0");
 
   // current working directory is writable check
   let isCwdWritable = false;
@@ -71,14 +71,14 @@ export async function doctorCommand(input: DoctorCommandInput): Promise<void> {
     console.log("✕ Current directory not writable");
   }
 
-  // .execflow/runs can be created or accessed check
-  const runsDir = path.resolve(cwd, ".execflow/runs");
+  // .openflow/runs can be created or accessed check
+  const runsDir = path.resolve(cwd, ".openflow/runs");
   let runsDirOk = false;
   try {
     await fs.mkdir(runsDir, { recursive: true });
     await fs.access(runsDir, fs.constants.W_OK);
     runsDirOk = true;
-    console.log(`✓ Artifact directory available: .execflow/runs`);
+    console.log(`✓ Artifact directory available: .openflow/runs`);
   } catch {
     console.log("✕ Artifact directory unavailable");
   }
@@ -113,7 +113,7 @@ export async function doctorCommand(input: DoctorCommandInput): Promise<void> {
       .filter((p) => !p.ok)
       .map((p) => p.provider)
       .join(", ");
-    throw new ExecflowError(
+    throw new OpenFlowError(
       ErrorCode.PROVIDER_UNAVAILABLE,
       `Provider check failed: ${failedList} is unavailable.`
     );

@@ -21,7 +21,7 @@ async function runCli(args: string[]) {
 
   let error: unknown = null;
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -67,7 +67,7 @@ describe("Integration - mock run failure", () => {
     // Manifest should exist
     const manifestPath = path.join(runDir, "manifest.json");
     const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
-    expect(manifest.schemaVersion).toBe("execflow.manifest.v1");
+    expect(manifest.schemaVersion).toBe("openflow.manifest.v1");
     // Status can be succeeded or failed depending on runtime failure policy
     expect(["succeeded", "failed", "cancelled"]).toContain(manifest.status);
 
@@ -90,7 +90,7 @@ describe("Integration - mock run failure", () => {
 
     // Report should include the failed agent
     const report = JSON.parse(await fs.readFile(path.join(runDir, "report.json"), "utf8"));
-    expect(report.schemaVersion).toBe("execflow.report.v1");
+    expect(report.schemaVersion).toBe("openflow.report.v1");
     expect(Array.isArray(report.agents)).toBe(true);
 
     const failedAgent = report.agents.find((a: { id: string }) => a.id === "review-fail");

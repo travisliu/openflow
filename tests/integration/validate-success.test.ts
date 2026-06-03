@@ -28,7 +28,7 @@ async function runCli(args: string[]) {
   let error: any = null;
 
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -72,9 +72,9 @@ describe("Valid metadata passes validation", () => {
     expect(result.stdout).toContain("valid-basic");
     expect(result.stdout.toLowerCase()).toContain("valid");
 
-    // Ensure no .execflow directory is created in TEMP_DIR
-    const execflowDir = path.join(TEMP_DIR, ".execflow");
-    const exists = await fs.stat(execflowDir).then(() => true).catch(() => false);
+    // Ensure no .openflow directory is created in TEMP_DIR
+    const openflowDir = path.join(TEMP_DIR, ".openflow");
+    const exists = await fs.stat(openflowDir).then(() => true).catch(() => false);
     expect(exists).toBe(false);
   });
 });

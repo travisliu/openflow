@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadWorkflow } from "../../../src/workflow/load.js";
-import { ExecflowError } from "../../../src/errors/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
 import { resolve } from "node:path";
 
 describe("Load Workflow", () => {
@@ -16,7 +16,7 @@ describe("Load Workflow", () => {
   it("throws WORKFLOW_PARSE_ERROR if file does not exist", async () => {
     await expect(
       loadWorkflow("nonexistent-workflow.js", process.cwd())
-    ).rejects.toThrow(ExecflowError);
+    ).rejects.toThrow(OpenFlowError);
 
     try {
       await loadWorkflow("nonexistent-workflow.js", process.cwd());

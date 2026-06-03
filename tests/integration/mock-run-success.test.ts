@@ -21,7 +21,7 @@ async function runCli(args: string[]) {
 
   let error: any = null;
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -70,7 +70,7 @@ describe("Integration - mock run success", () => {
     const manifestPath = path.join(runDir, "manifest.json");
     const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
     expect(manifest.status).toBe("succeeded");
-    expect(manifest.schemaVersion).toBe("execflow.manifest.v1");
+    expect(manifest.schemaVersion).toBe("openflow.manifest.v1");
 
     expect(await fs.stat(path.join(runDir, "workflow.input.ts"))).toBeDefined();
     expect(await fs.stat(path.join(runDir, "config.resolved.json"))).toBeDefined();

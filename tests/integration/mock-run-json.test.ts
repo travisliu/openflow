@@ -21,7 +21,7 @@ async function runCli(args: string[]) {
 
   let error: unknown = null;
   try {
-    await main(["node", "execflow", ...args]);
+    await main(["node", "openflow", ...args]);
   } catch (err) {
     error = err;
   } finally {
@@ -72,7 +72,7 @@ describe("Integration - mock run json mode", () => {
 
     // Should match WorkflowRunResult schema
     const report = parsed as Record<string, unknown>;
-    expect(report.schemaVersion).toBe("execflow.report.v1");
+    expect(report.schemaVersion).toBe("openflow.report.v1");
     expect(typeof report.runId).toBe("string");
     expect(report.status).toBe("succeeded");
     expect(Array.isArray(report.agents)).toBe(true);
@@ -97,7 +97,7 @@ describe("Integration - mock run json mode", () => {
     const runDir = path.join(TEMP_DIR, runs[0]!);
     const reportJson = await fs.readFile(path.join(runDir, "report.json"), "utf8");
     const persistedReport = JSON.parse(reportJson) as Record<string, unknown>;
-    expect(persistedReport.schemaVersion).toBe("execflow.report.v1");
+    expect(persistedReport.schemaVersion).toBe("openflow.report.v1");
     expect(persistedReport.status).toBe("succeeded");
   });
 

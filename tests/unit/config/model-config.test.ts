@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { validateConfig } from "../../../src/config/schema.js";
-import { ExecflowError } from "../../../src/errors/types.js";
-import type { ExecflowConfig } from "../../../src/config/types.js";
+import { OpenFlowError } from "../../../src/errors/types.js";
+import type { OpenFlowConfig } from "../../../src/config/types.js";
 
-const baseConfig: ExecflowConfig = {
+const baseConfig: OpenFlowConfig = {
   defaultProvider: "mock",
   concurrency: 4,
   timeoutMs: 30000,
@@ -28,7 +28,7 @@ const baseConfig: ExecflowConfig = {
 
 describe("Model Config Validation", () => {
   it("passes with valid model configuration", () => {
-    const config: ExecflowConfig = {
+    const config: OpenFlowConfig = {
       ...baseConfig,
       defaultModel: "global-model",
       providers: {
@@ -54,7 +54,7 @@ describe("Model Config Validation", () => {
       ...baseConfig,
       defaultModel: 123 as any
     };
-    expect(() => validateConfig(config)).toThrow(ExecflowError);
+    expect(() => validateConfig(config)).toThrow(OpenFlowError);
     try {
       validateConfig(config);
     } catch (err: any) {
@@ -74,7 +74,7 @@ describe("Model Config Validation", () => {
         }
       }
     };
-    expect(() => validateConfig(config)).toThrow(ExecflowError);
+    expect(() => validateConfig(config)).toThrow(OpenFlowError);
     try {
       validateConfig(config);
     } catch (err: any) {
@@ -95,7 +95,7 @@ describe("Model Config Validation", () => {
         }
       }
     };
-    expect(() => validateConfig(config)).toThrow(ExecflowError);
+    expect(() => validateConfig(config)).toThrow(OpenFlowError);
     try {
       validateConfig(config);
     } catch (err: any) {
@@ -116,7 +116,7 @@ describe("Model Config Validation", () => {
         }
       }
     };
-    expect(() => validateConfig(config)).toThrow(ExecflowError);
+    expect(() => validateConfig(config)).toThrow(OpenFlowError);
     try {
       validateConfig(config);
     } catch (err: any) {
@@ -137,7 +137,7 @@ describe("Model Config Validation", () => {
         }
       }
     };
-    expect(() => validateConfig(config)).toThrow(ExecflowError);
+    expect(() => validateConfig(config)).toThrow(OpenFlowError);
     try {
       validateConfig(config);
     } catch (err: any) {

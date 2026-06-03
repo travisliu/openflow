@@ -58,7 +58,7 @@ describe("DefaultAgentExecutor environment and redaction", () => {
       workflowSource: "",
       workflowHash: "hash",
       resolvedConfig: config,
-      execflowVersion: "1.0.0",
+      openflowVersion: "1.0.0",
       cwd: process.cwd()
     });
 
@@ -121,7 +121,7 @@ describe("DefaultAgentExecutor environment and redaction", () => {
     const store = new FileSystemArtifactStore({ rootDir: TEST_OUT_DIR });
     const runId = "test-run-timeout";
     const runOutDir = path.join(TEST_OUT_DIR, runId);
-    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, execflowVersion: "1.0.0", cwd: process.cwd() });
+    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, openflowVersion: "1.0.0", cwd: process.cwd() });
     const eventBus = new EventBus({ runId, artifactStore: store, subscribers: [] });
     const executor = new DefaultAgentExecutor({ config, artifactStore: store, eventBus });
 
@@ -162,7 +162,7 @@ describe("DefaultAgentExecutor environment and redaction", () => {
     const store = new FileSystemArtifactStore({ rootDir: TEST_OUT_DIR });
     const runId = "test-run-cancelled";
     const runOutDir = path.join(TEST_OUT_DIR, runId);
-    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, execflowVersion: "1.0.0", cwd: process.cwd() });
+    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, openflowVersion: "1.0.0", cwd: process.cwd() });
     const eventBus = new EventBus({ runId, artifactStore: store, subscribers: [] });
     const executor = new DefaultAgentExecutor({ config, artifactStore: store, eventBus });
 
@@ -205,7 +205,7 @@ describe("DefaultAgentExecutor environment and redaction", () => {
     const store = new FileSystemArtifactStore({ rootDir: TEST_OUT_DIR });
     const runId = "test-run-multi";
     const runOutDir = path.join(TEST_OUT_DIR, runId);
-    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, execflowVersion: "1.0.0", cwd: process.cwd() });
+    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, openflowVersion: "1.0.0", cwd: process.cwd() });
     const eventBus = new EventBus({ runId, artifactStore: store, subscribers: [] });
     const executor = new DefaultAgentExecutor({ config, artifactStore: store, eventBus });
 
@@ -245,7 +245,7 @@ describe("DefaultAgentExecutor environment and redaction", () => {
     const store = new FileSystemArtifactStore({ rootDir: TEST_OUT_DIR });
     const runId = "test-run-logs";
     const runOutDir = path.join(TEST_OUT_DIR, runId);
-    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, execflowVersion: "1.0.0", cwd: process.cwd() });
+    await store.createRun({ runId, outDir: runOutDir, workflowPath: "dummy.ts", workflowSource: "", workflowHash: "hash", resolvedConfig: config, openflowVersion: "1.0.0", cwd: process.cwd() });
     const eventBus = new EventBus({ runId, artifactStore: store, subscribers: [] });
     const executor = new DefaultAgentExecutor({ config, artifactStore: store, eventBus });
 
