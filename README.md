@@ -4,7 +4,7 @@ OpenFlow is a local-first command-line workflow runner for orchestrating coding-
 
 It lets engineers define constrained JavaScript-like workflows, run agent tasks sequentially or in parallel, capture structured results, and persist durable run artifacts for local debugging and CI automation.
 
-> **Status:** MVP design / early implementation target. This README describes the intended MVP behavior and user-facing CLI contract.
+> **Status:** Active / Production-ready. This README describes the behavior and user-facing CLI contract of OpenFlow.
 
 ---
 
@@ -24,9 +24,9 @@ OpenFlow does **not** implement its own coding agent. It coordinates external pr
 
 ---
 
-## MVP Features
+## Features
 
-The MVP scope includes:
+OpenFlow supports:
 
 - `openflow run <workflow-file>`
 - `openflow validate <workflow-file>`
@@ -35,6 +35,7 @@ The MVP scope includes:
 - Workflow DSL functions:
   - `agent()`
   - `parallel()`
+  - `pipeline()`
   - `phase()`
   - `log()`
 - Provider adapters:
@@ -49,7 +50,7 @@ The MVP scope includes:
 - Durable artifact directories under `.openflow/runs/<runId>`
 - Deterministic exit codes
 
-Deferred post-MVP features include `pipeline()`, plugin providers, retries, worktree/container isolation, resumable runs, approval gates, automatic patch application, and static HTML reports.
+Future roadmap features include plugin providers, retries, worktree/container isolation, resumable runs, approval gates, automatic patch application, and static HTML reports.
 
 ---
 
@@ -259,7 +260,7 @@ Validation checks include:
 - `meta.name` and `meta.description` are present.
 - Metadata is statically analyzable.
 - Unsupported imports and restricted APIs are rejected.
-- Unsupported DSL functions such as `pipeline()` are rejected in MVP.
+- `pipeline()` stage configuration and structure are verified.
 
 ### `openflow doctor`
 
@@ -324,7 +325,7 @@ export const meta = {
 
 ## Workflow DSL
 
-OpenFlow workflows run in a constrained runtime. The MVP exposes a small DSL.
+OpenFlow workflows run in a constrained runtime. The runtime exposes a clean, expressive DSL.
 
 ### `agent(input)`
 
@@ -402,6 +403,51 @@ Adds a workflow log event.
 log("Starting review", { files: 2 });
 ```
 
+### `pipeline(items, stages, options?)`
+
+Processes an array of input items through a sequence of stage objects sequentially or concurrently depending on the strategy.
+
+```ts
+const pipelineResults = await pipeline(
+  ["src/auth.ts", "src/billing.ts"],
+  [
+    {
+      name: "lint",
+      run: async (file, ctx) => {
+        ctx.log(`Linting ${file}`);
+        const res = await ctx.agent({
+          id: ctx.agentId("lint"),
+          prompt: `Find lint errors in ${file}`
+        });
+        return { file, result: res.text };
+      }
+    }
+  ],
+  {
+    strategy: "item-streaming", // or "stage-barrier"
+    concurrency: 2,
+    preserveOrder: true
+  }
+);
+```
+
+Supported options:
+- `strategy`: `"item-streaming"` (processes each item completely through all stages concurrently) or `"stage-barrier"` (processes all items through stage 1 before starting stage 2). Default is `"item-streaming"`.
+- `concurrency`: Global max concurrent items/stages processing.
+- `stageConcurrency`: Object mapping stage name to specific concurrency value.
+- `preserveOrder`: Boolean to keep the output in the same order as items. Default is `true`.
+- `failFast`: Boolean to stop processing on first item/stage failure.
+
+The `PipelineStageContext` (`ctx`) object passed to each stage contains:
+- `pipelineId` and `runId` (strings)
+- `itemIndex` and `stageIndex` (numbers)
+- `stageName` (string)
+- `agent(input)`: Run an agent call with guaranteed scoped context.
+- `log(message, data?)`: Log pipeline-specific messages.
+- `agentId(suffix?)`: Helper to generate a unique agent ID.
+- `signal`: AbortSignal for the stage.
+- `sleep(ms)`: Utility to pause execution within the stage.
+
 ---
 
 ## Structured Output
@@ -469,7 +515,7 @@ providers:
     args:
       - --output-format
       - json
-    defaultModel: gemini-2.5-flash
+    defaultModel: gemini-3-flash-preview
 
   mock:
     command: mock
@@ -518,7 +564,7 @@ When resolving which model to use for an agent task, OpenFlow applies the follow
 By default, the `codex` provider CLI uses `--model <model>` and the `gemini` provider CLI uses `-m <model>`. You can customize this flag or disable model selection entirely for any provider in `.openflow/config.yaml`:
 
 ```yaml
-defaultModel: gemini-2.5-flash # Global default model
+defaultModel: gemini-3-flash-preview # Global default model
 
 providers:
   codex:
@@ -622,9 +668,9 @@ Artifacts are always enabled so failed or partial runs remain debuggable.
 
 ## Safety Model
 
-OpenFlow is safe by default, but the MVP should not be described as a complete security sandbox.
+OpenFlow is safe by default, but should not be described as a complete security sandbox.
 
-Default MVP behavior:
+Default security behavior:
 
 - Workflow shell execution is unavailable.
 - Arbitrary workflow imports are unavailable.
@@ -796,6 +842,20 @@ Recommended test coverage:
 
 ---
 
+## Agent Skills
+
+For AI/coding agents developing workflows in this repository, a pre-configured skill is located at [skills/openflow-workflow-writer/](file:///root/projects/execflow/skills/openflow-workflow-writer/). 
+
+This directory contains:
+- [SKILL.md](file:///root/projects/execflow/skills/openflow-workflow-writer/SKILL.md): Instructions and guidelines for AI agents to write, validate, and troubleshoot OpenFlow workflows.
+- Reference documentation under [references/](file:///root/projects/execflow/skills/openflow-workflow-writer/references/):
+  - [api-document.md](file:///root/projects/execflow/skills/openflow-workflow-writer/references/api-document.md): Complete guide on workflow syntax, DSL primitives (`agent`, `parallel`, `pipeline`), structured outputs, and exit codes.
+  - [cli-commands.md](file:///root/projects/execflow/skills/openflow-workflow-writer/references/cli-commands.md): Detailed usage details for the `run`, `validate`, and `doctor` commands.
+  - [configuration.md](file:///root/projects/execflow/skills/openflow-workflow-writer/references/configuration.md): Schema structure, precedence rules, and model customization guidelines for `.openflow/config.yaml`.
+- Reusable templates under `assets/` for building new workflows.
+
+---
+
 ## Design Principles
 
 OpenFlow follows these boundaries:
@@ -812,4 +872,4 @@ OpenFlow follows these boundaries:
 
 ## License
 
-TBD.
+MIT
