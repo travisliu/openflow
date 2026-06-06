@@ -42,6 +42,77 @@ describe("CodexExecAdapter", () => {
     expect(cmd.stdin).toBe("generate a test");
   });
 
+  it("injects schema into stdin by default when schema is provided", async () => {
+    const adapter = new CodexExecAdapter();
+    const input: AgentRunInput = {
+      id: "run-1",
+      provider: "codex",
+      prompt: "Return findings as JSON.",
+      schema: {
+        type: "object",
+        properties: {
+          findings: { type: "array" }
+        },
+        required: ["findings"]
+      },
+      cwd: "/root",
+      timeoutMs: 1000,
+      env: { PATH: "/bin" }
+    };
+
+    const cmd = await adapter.buildCommand(input);
+    expect(cmd.stdin).toContain("Return findings as JSON.");
+    expect(cmd.stdin).toContain("JSON Schema:");
+    expect(cmd.stdin).toContain('"findings"');
+  });
+
+  it("does not inject schema when structuredOutput.transport is validate-only", async () => {
+    const adapter = new CodexExecAdapter();
+    const input: AgentRunInput = {
+      id: "run-1",
+      provider: "codex",
+      prompt: "Return findings as JSON.",
+      schema: {
+        type: "object",
+        properties: {
+          findings: { type: "array" }
+        },
+        required: ["findings"]
+      },
+      structuredOutput: { transport: "validate-only" },
+      cwd: "/root",
+      timeoutMs: 1000,
+      env: { PATH: "/bin" }
+    };
+
+    const cmd = await adapter.buildCommand(input);
+    expect(cmd.stdin).toBe("Return findings as JSON.");
+  });
+
+  it("rejects native structured output transport", async () => {
+    const adapter = new CodexExecAdapter();
+    const input: AgentRunInput = {
+      id: "run-1",
+      provider: "codex",
+      prompt: "Return findings as JSON.",
+      schema: {
+        type: "object",
+        properties: {
+          findings: { type: "array" }
+        },
+        required: ["findings"]
+      },
+      structuredOutput: { transport: "native" },
+      cwd: "/root",
+      timeoutMs: 1000,
+      env: { PATH: "/bin" }
+    };
+
+    await expect(adapter.buildCommand(input)).rejects.toThrow(
+      'Codex does not support structuredOutput.transport="native" yet.'
+    );
+  });
+
   it("uses arg prompt mode when configured", async () => {
     const adapter = new CodexExecAdapter({
       command: "codex",
@@ -100,6 +171,22 @@ describe("CodexExecAdapter", () => {
     const parsed = await adapter.parseResult(parseInput);
     expect(parsed.text).toBe("hello from codex");
     expect(parsed.json).toEqual({ text: "hello from codex", confidence: 0.9 });
+    expect(parsed.structuredJson).toBeUndefined();
+  });
+
+  it("parses JSON stdout with text field containing valid JSON", async () => {
+    const adapter = new CodexExecAdapter();
+    const parseInput: ProviderParseInput = {
+      input: { id: "1", provider: "codex", prompt: "test", cwd: "", timeoutMs: 1, env: {} },
+      stdout: '{"text": "{\\"value\\": \\"hello\\"}", "confidence": 0.9}',
+      stderr: "",
+      exitCode: 0
+    };
+
+    const parsed = await adapter.parseResult(parseInput);
+    expect(parsed.text).toBe('{"value": "hello"}');
+    expect(parsed.json).toEqual({ text: '{"value": "hello"}', confidence: 0.9 });
+    expect(parsed.structuredJson).toEqual({ value: "hello" });
   });
 
   it("parses JSON stdout with arbitrary object", async () => {
@@ -121,6 +208,7 @@ describe("CodexExecAdapter", () => {
     const parsed = await adapter.parseResult(parseInput);
     expect(parsed.text).toBeUndefined();
     expect(parsed.json).toEqual({ status: "ok", items: [1, 2] });
+    expect(parsed.structuredJson).toEqual({ status: "ok", items: [1, 2] });
   });
 
   it("falls back to text stdout and warns on malformed JSON", async () => {
@@ -162,6 +250,7 @@ describe("CodexExecAdapter", () => {
     const parsed = await adapter.parseResult(parseInput);
     expect(parsed.text).toBe("Final plain text answer");
     expect(parsed.json).toBeUndefined();
+    expect(parsed.structuredJson).toBeUndefined();
     expect(parsed.raw).toEqual({
       format: "codex-jsonl",
       events: [
@@ -191,6 +280,7 @@ describe("CodexExecAdapter", () => {
     const parsed = await adapter.parseResult(parseInput);
     expect(parsed.text).toBe('{"result": "success"}');
     expect(parsed.json).toEqual({ result: "success" });
+    expect(parsed.structuredJson).toEqual({ result: "success" });
   });
 
   it("ignores non-message events such as thread.started, turn.started, command_execution, and turn.completed", async () => {
@@ -231,6 +321,7 @@ describe("CodexExecAdapter", () => {
     const parsed = await adapter.parseResult(parseInput);
     expect(parsed.text).toBe('{"v": 2}');
     expect(parsed.json).toEqual({ v: 2 });
+    expect(parsed.structuredJson).toEqual({ v: 2 });
   });
 
   it("falls back to stdout with a warning when JSONL exists but no agent_message is present", async () => {

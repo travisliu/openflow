@@ -2,6 +2,12 @@ import type { AgentArtifacts } from "./artifacts.js";
 import type { JsonSchema, ProviderName } from "./common.js";
 import type { SerializedError } from "./errors.js";
 
+export type StructuredOutputTransport = "validate-only" | "prompt" | "native" | "auto";
+
+export interface StructuredOutputConfig {
+  transport?: StructuredOutputTransport | undefined;
+}
+
 export interface AgentCallInput {
   id?: string | undefined;
   label?: string | undefined;
@@ -9,6 +15,7 @@ export interface AgentCallInput {
   prompt: string;
   model?: string | undefined;
   schema?: JsonSchema | undefined;
+  structuredOutput?: StructuredOutputConfig | undefined;
   timeoutMs?: number | undefined;
   cwd?: string | undefined;
   metadata?: Record<string, unknown> | undefined;
@@ -68,6 +75,7 @@ export interface AgentRunInput {
   prompt: string;
   model?: string | undefined;
   schema?: JsonSchema | undefined;
+  structuredOutput?: StructuredOutputConfig | undefined;
   timeoutMs: number;
   cwd: string;
   env: Record<string, string>;
@@ -102,6 +110,7 @@ export interface ProviderParseInput {
 export interface ProviderParsedResult {
   text?: string;
   json?: unknown;
+  structuredJson?: unknown;
   raw?: unknown;
   parseWarnings?: string[];
 }

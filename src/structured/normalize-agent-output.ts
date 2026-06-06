@@ -17,8 +17,14 @@ export async function normalizeAgentOutput(input: {
     let candidate: unknown = undefined;
     let found = false;
 
-    // 1. Use parsed.json if available
-    if (parsed.json !== undefined) {
+    // 1. Use parsed.structuredJson if available
+    if (parsed.structuredJson !== undefined) {
+      candidate = parsed.structuredJson;
+      found = true;
+    }
+
+    // 2. Use parsed.json if available
+    if (!found && parsed.json !== undefined) {
       candidate = parsed.json;
       found = true;
     }

@@ -10,7 +10,23 @@ describe("normalizeAgentOutput", () => {
     }
   };
 
-  it("schema uses provider JSON if available", async () => {
+  it("schema uses structuredJson if available", async () => {
+    const result = await normalizeAgentOutput({
+      schema,
+      parsed: {
+        structuredJson: { value: "from-structured" },
+        json: { envelope: "envelope", text: '{"value": "from-structured"}' }
+      },
+      stdout: "raw stdout"
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.json).toEqual({ value: "from-structured" });
+    }
+  });
+
+  it("schema falls back to provider json if structuredJson is absent", async () => {
     const result = await normalizeAgentOutput({
       schema,
       parsed: { json: { value: "from-provider-json" } },
@@ -23,7 +39,7 @@ describe("normalizeAgentOutput", () => {
     }
   });
 
-  it("schema parses from provider text if available", async () => {
+  it("schema falls back to provider text if structuredJson and json are absent", async () => {
     const result = await normalizeAgentOutput({
       schema,
       parsed: { text: '{"value": "from-provider-text"}' },

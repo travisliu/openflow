@@ -22,6 +22,9 @@ const reviews = await parallel({
         }
       },
       required: ["findings"]
+    },
+    structuredOutput: {
+      transport: "prompt"
     }
   }),
   billing: () => agent({

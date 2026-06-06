@@ -11,3 +11,6 @@ providers:
         stdout: '{ "findings": [ }'
       plaintext-agent:
         text: "This is some plain text output."
+      mock-native-structured-output:
+        json:
+          findings: ["finding 1"]

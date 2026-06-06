@@ -162,5 +162,8 @@ describe("Integration - mock run artifact layout", () => {
     const schema = JSON.parse(await fs.readFile(path.join(reviewAuthDir, "schema.json"), "utf8"));
     expect(schema.type).toBe("object");
     expect(schema.required).toContain("findings");
+
+    const metadata = JSON.parse(await fs.readFile(path.join(reviewAuthDir, "metadata.json"), "utf8"));
+    expect(metadata.structuredOutputTransport).toBe("prompt");
   });
 });

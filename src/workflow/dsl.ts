@@ -9,6 +9,7 @@ import type { PipelineStage, PipelineOptions, PipelineResult } from "../pipeline
 import { runPipeline } from "../pipeline/run.js";
 import { getActivePipelineContext, recordChildAgentId } from "../pipeline/context.js";
 import { createPipelineAgentId } from "../pipeline/id.js";
+import { isStructuredOutputTransport } from "../structured/structured-output.js";
 
 export function createDsl(runtime: RuntimeState) {
   return {
@@ -58,6 +59,20 @@ export function createDsl(runtime: RuntimeState) {
       }
       if (input.cwd !== undefined && (typeof input.cwd !== "string" || input.cwd.trim() === "")) {
         throw new InvalidDslCallError("agent() cwd must be a non-empty string.");
+      }
+      if (
+        input.structuredOutput !== undefined &&
+        (typeof input.structuredOutput !== "object" || input.structuredOutput === null || Array.isArray(input.structuredOutput))
+      ) {
+        throw new InvalidDslCallError("agent() structuredOutput must be an object when provided.");
+      }
+      if (
+        input.structuredOutput?.transport !== undefined &&
+        !isStructuredOutputTransport(input.structuredOutput.transport)
+      ) {
+        throw new InvalidDslCallError(
+          'agent() structuredOutput.transport must be one of "validate-only", "prompt", "native", or "auto".'
+        );
       }
 
       // Normalization
@@ -131,6 +146,7 @@ export function createDsl(runtime: RuntimeState) {
           if (input.label !== undefined) execInput.label = input.label;
           if (resolved.model !== undefined) execInput.model = resolved.model;
           if (input.schema !== undefined) execInput.schema = input.schema;
+          if (input.structuredOutput !== undefined) execInput.structuredOutput = input.structuredOutput;
 
           try {
             return await runtime.agentExecutor.execute(execInput);

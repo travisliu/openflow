@@ -8,6 +8,9 @@ import type {
   MockProviderConfig,
   MockProviderResponse
 } from "./types.js";
+import { resolveStructuredOutputPrompt } from "../structured/structured-output.js";
+import { OpenFlowError } from "../errors/types.js";
+import { ErrorCode } from "../errors/codes.js";
 
 export class MockAdapter implements AgentAdapter {
   readonly name = "mock";
@@ -26,6 +29,17 @@ export class MockAdapter implements AgentAdapter {
   }
 
   async buildCommand(input: AgentRunInput): Promise<ProviderCommand> {
+    const structuredPrompt = resolveStructuredOutputPrompt({
+      prompt: input.prompt,
+      schema: input.schema,
+      structuredOutput: input.structuredOutput
+    });
+    if (structuredPrompt.nativeRequested) {
+      throw new OpenFlowError(
+        ErrorCode.CLI_USAGE_ERROR,
+        'Mock provider does not support structuredOutput.transport="native" yet.'
+      );
+    }
     return {
       command: "mock-process",
       args: [input.id],

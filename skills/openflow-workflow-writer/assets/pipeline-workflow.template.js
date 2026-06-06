@@ -16,7 +16,21 @@ const itemResults = await pipeline(
       run: (item, ctx) => ctx.agent({
         id: ctx.agentId("analyze"),
         provider: "codex",
-        prompt: `Analyze ${item} for correctness, security, and maintainability risks.`
+        prompt: `Analyze ${item} for correctness, security, and maintainability risks. Return exactly one JSON object.`,
+        schema: {
+          type: "object",
+          properties: {
+            item: { type: "string" },
+            findings: {
+              type: "array",
+              items: { type: "string" }
+            }
+          },
+          required: ["item", "findings"]
+        },
+        structuredOutput: {
+          transport: "auto"
+        }
       })
     },
     {

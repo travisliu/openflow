@@ -62,6 +62,23 @@ function makeSchedulerWithResult(result: AgentResult) {
   };
 }
 
+function makeExecutingScheduler() {
+  return {
+    schedule: vi.fn(async (task: { run: (signal: AbortSignal) => Promise<AgentResult> }) => {
+      return task.run(new AbortController().signal);
+    }),
+    drain: vi.fn().mockResolvedValue(undefined),
+    abort: vi.fn(),
+    getSnapshot: vi.fn().mockReturnValue({
+      aborted: false,
+      abortReason: undefined,
+      runningCount: 0,
+      queuedCount: 0,
+      completedCount: 0
+    })
+  };
+}
+
 function makeRuntimeState(overrides: Partial<RuntimeState> = {}): RuntimeState {
   const parsedWorkflow: ParsedWorkflow = {
     meta: { name: "test", description: "test" },
@@ -142,6 +159,18 @@ describe("DSL: agent()", () => {
     await expect(dsl.agent(undefined as any)).rejects.toThrow(InvalidDslCallError);
   });
 
+  it("rejects an invalid structuredOutput transport", async () => {
+    const runtime = makeRuntimeState();
+    const dsl = createDsl(runtime);
+
+    await expect(
+      dsl.agent({
+        prompt: "hello",
+        structuredOutput: { transport: "bogus" as any }
+      })
+    ).rejects.toThrow("structuredOutput.transport");
+  });
+
   it("uses default provider from config when input provider is not specified", async () => {
     const successResult = makeSuccessResult("agent-1", "mock");
     const scheduler = makeSchedulerWithResult(successResult);
@@ -166,6 +195,29 @@ describe("DSL: agent()", () => {
     const scheduleCall = scheduler.schedule.mock.calls[0]!;
     const scheduledTask = scheduleCall[0];
     expect(scheduledTask.provider).toBe("mock");
+  });
+
+  it("passes structuredOutput through to agent execution", async () => {
+    const agentExecutor = { execute: vi.fn().mockResolvedValue(makeSuccessResult("agent-1")) };
+    const scheduler = makeExecutingScheduler();
+    const runtime = makeRuntimeState({
+      scheduler: scheduler as any,
+      agentExecutor: agentExecutor as any
+    });
+    const dsl = createDsl(runtime);
+
+    await dsl.agent({
+      id: "agent-1",
+      prompt: "hello",
+      structuredOutput: { transport: "prompt" }
+    });
+
+    expect(agentExecutor.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "hello",
+        structuredOutput: { transport: "prompt" }
+      })
+    );
   });
 
   it("uses explicit provider over config default", async () => {

@@ -79,6 +79,9 @@ type AgentCallInput = {
   prompt: string;
   model?: string;
   schema?: JsonSchema;
+  structuredOutput?: {
+    transport?: "auto" | "prompt" | "validate-only" | "native";
+  };
   timeoutMs?: number;
   cwd?: string;
   metadata?: Record<string, unknown>;
@@ -95,17 +98,38 @@ type AgentCallInput = {
 | `prompt`    |      Yes | Prompt sent to the provider.                                        |
 | `model`     |       No | Model override for this call.                                       |
 | `schema`    |       No | JSON Schema used to validate structured output.                     |
+| `structuredOutput` | No | Controls how a provided schema reaches the provider.           |
 | `timeoutMs` |       No | Per-agent timeout in milliseconds.                                  |
 | `cwd`       |       No | Working directory for the provider call.                            |
 | `metadata`  |       No | Descriptive metadata for reports or artifacts.                      |
 
-### Example with schema
+### Structured output
+
+Use `schema` when downstream workflow steps need machine-readable output. When a schema is provided, OpenFlow validates the normalized provider output locally.
+
+`structuredOutput.transport` controls how the schema is supplied:
+
+| Transport | Behavior |
+| --------- | -------- |
+| `auto` | Default. Current providers use prompt injection and local validation. |
+| `prompt` | Always inject schema instructions into the provider prompt and validate locally. |
+| `validate-only` | Do not inject the schema; validate whatever the provider returns. |
+| `native` | Reserved for future provider-native structured output. Current `codex`, `gemini`, and `mock` adapters reject it. |
+
+Recommended defaults:
+
+* Use `structuredOutput: { transport: "auto" }` for most workflows with `schema`.
+* Use `prompt` when you want the workflow to be explicit about prompt injection.
+* Use `validate-only` only when your prompt already gives exact JSON output instructions.
+* Do not use `native` unless the target adapter explicitly supports it.
+
+### Example with schema and structured output
 
 ```ts
 const result = await agent({
   id: "security-review",
   provider: "codex",
-  prompt: "Return security findings as JSON.",
+  prompt: "Return exactly one JSON object containing security findings.",
   schema: {
     type: "object",
     properties: {
@@ -124,6 +148,9 @@ const result = await agent({
       }
     },
     required: ["findings"]
+  },
+  structuredOutput: {
+    transport: "auto"
   }
 });
 ```
@@ -704,7 +731,21 @@ phase("execute");
 const result = await agent({
   id: "main-task",
   provider: "codex",
-  prompt: "Complete the requested task."
+  prompt: "Complete the requested task and return exactly one JSON object.",
+  schema: {
+    type: "object",
+    properties: {
+      summary: { type: "string" },
+      nextSteps: {
+        type: "array",
+        items: { type: "string" }
+      }
+    },
+    required: ["summary", "nextSteps"]
+  },
+  structuredOutput: {
+    transport: "auto"
+  }
 });
 
 export default {
@@ -782,7 +823,21 @@ const itemResults = await pipeline(
       run: (item, ctx) => ctx.agent({
         id: `analyze:${item}`,
         provider: "codex",
-        prompt: `Analyze ${item} for correctness, security, and maintainability risks.`
+        prompt: `Analyze ${item} for correctness, security, and maintainability risks. Return exactly one JSON object.`,
+        schema: {
+          type: "object",
+          properties: {
+            item: { type: "string" },
+            findings: {
+              type: "array",
+              items: { type: "string" }
+            }
+          },
+          required: ["item", "findings"]
+        },
+        structuredOutput: {
+          transport: "auto"
+        }
       })
     },
     {

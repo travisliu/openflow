@@ -35,6 +35,29 @@ describe("MockAdapter", () => {
     expect(parsed.text).toBe("mock response");
   });
 
+  it("rejects native structured output transport", async () => {
+    const adapter = new MockAdapter();
+    const input: AgentRunInput = {
+      id: "run-native",
+      provider: "mock",
+      prompt: "hello",
+      schema: {
+        type: "object",
+        properties: {
+          value: { type: "string" }
+        }
+      },
+      structuredOutput: { transport: "native" },
+      cwd: "/root",
+      timeoutMs: 1000,
+      env: {}
+    };
+
+    await expect(adapter.buildCommand(input)).rejects.toThrow(
+      'Mock provider does not support structuredOutput.transport="native" yet.'
+    );
+  });
+
   it("mock response by id", async () => {
     const adapter = new MockAdapter({
       responses: {

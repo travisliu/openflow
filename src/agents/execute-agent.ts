@@ -13,6 +13,7 @@ const MAX_IN_MEMORY_LOG_SIZE = 1024 * 1024; // 1MB limit for in-memory results
 
 interface MockAdapterWithLookup {
   lookupResponse(input: AgentRunInput): any;
+  buildCommand(input: AgentRunInput): Promise<any>;
 }
 
 function isMockAdapter(adapter: any): adapter is MockAdapterWithLookup {
@@ -49,7 +50,8 @@ export class DefaultAgentExecutor implements AgentExecutor {
     // Write metadata.json
     const metadataJson = {
       model: input.model,
-      resolutionSource: input.metadata?.modelResolutionSource || "provider-default"
+      resolutionSource: input.metadata?.modelResolutionSource || "provider-default",
+      structuredOutputTransport: input.schema ? input.structuredOutput?.transport ?? "auto" : undefined
     };
     await this.artifactStore.writeJson(`agents/${input.id}/metadata.json`, metadataJson);
 
@@ -75,6 +77,20 @@ export class DefaultAgentExecutor implements AgentExecutor {
     let timedOut = false;
     let cancelled = false;
 
+    const agentArtifacts = {
+      dir: `agents/${input.id}`,
+      promptPath: `agents/${input.id}/prompt.txt`,
+      stdoutPath: `agents/${input.id}/stdout.log`,
+      stderrPath: `agents/${input.id}/stderr.log`,
+      rawResultPath: `agents/${input.id}/raw-result.json`,
+      normalizedResultPath: `agents/${input.id}/normalized-result.json`,
+      metadataPath: `agents/${input.id}/metadata.json`
+    } as any;
+
+    if (input.schema) {
+      agentArtifacts.schemaPath = `agents/${input.id}/schema.json`;
+    }
+
     // Run input
     const runInput: AgentRunInput = {
       id: input.id,
@@ -83,6 +99,7 @@ export class DefaultAgentExecutor implements AgentExecutor {
       prompt: input.prompt,
       model: input.model,
       schema: input.schema,
+      structuredOutput: input.structuredOutput,
       timeoutMs: input.timeoutMs,
       cwd: input.cwd,
       env: {},
@@ -107,10 +124,61 @@ export class DefaultAgentExecutor implements AgentExecutor {
     };
 
     let executionResult: { exitCode: number | null; timedOut: boolean; cancelled: boolean };
+    let commandInput: any;
+    try {
+      if (input.provider === "mock" && isMockAdapter(adapter)) {
+        await adapter.buildCommand(runInput);
+      } else {
+        commandInput = await adapter.buildCommand(runInput);
+      }
+    } catch (err: any) {
+      // Flush redactors
+      const finalStdout = stdoutRedactor.flush();
+      if (finalStdout) {
+        if (stdoutInMemory.length < MAX_IN_MEMORY_LOG_SIZE) stdoutInMemory += finalStdout;
+        await this.artifactStore.appendText(`agents/${input.id}/stdout.log`, finalStdout);
+        await this.eventBus.emit("agent.output", { agentId: input.id, stream: "stdout", data: finalStdout });
+      }
+      const finalStderr = stderrRedactor.flush();
+      if (finalStderr) {
+        if (stderrInMemory.length < MAX_IN_MEMORY_LOG_SIZE) stderrInMemory += finalStderr;
+        await this.artifactStore.appendText(`agents/${input.id}/stderr.log`, finalStderr);
+        await this.eventBus.emit("agent.output", { agentId: input.id, stream: "stderr", data: finalStderr });
+      }
+
+      const durationMs = Date.now() - startMs;
+      const errorPayload = {
+        name: err?.name || "Error",
+        message: err?.message || String(err),
+        code: err?.code || "INTERNAL_ERROR"
+      } as any;
+      if (err?.stack) {
+        errorPayload.stack = err.stack;
+      }
+
+      const failureResult: AgentFailureResult = {
+        ok: false,
+        status: "failed",
+        id: input.id,
+        label: input.label,
+        provider: input.provider,
+        model: input.model,
+        stdout: stdoutInMemory,
+        stderr: stderrInMemory,
+        exitCode: null,
+        durationMs,
+        artifacts: agentArtifacts,
+        error: errorPayload
+      };
+
+      await this.artifactStore.writeJson(`agents/${input.id}/raw-result.json`, failureResult);
+      return failureResult;
+    }
+
     if (input.provider === "mock" && isMockAdapter(adapter)) {
       executionResult = await this.executeMock(input, runInput, adapter, appendToLogs, { stdoutRedactor, stderrRedactor });
     } else {
-      executionResult = await this.executeProcess(input, runInput, adapter, appendToLogs, { stdoutRedactor, stderrRedactor });
+      executionResult = await this.executeProcess(input, runInput, commandInput, adapter, appendToLogs, { stdoutRedactor, stderrRedactor });
     }
 
     exitCode = executionResult.exitCode;
@@ -132,20 +200,6 @@ export class DefaultAgentExecutor implements AgentExecutor {
     }
 
     const durationMs = Date.now() - startMs;
-
-    const agentArtifacts = {
-      dir: `agents/${input.id}`,
-      promptPath: `agents/${input.id}/prompt.txt`,
-      stdoutPath: `agents/${input.id}/stdout.log`,
-      stderrPath: `agents/${input.id}/stderr.log`,
-      rawResultPath: `agents/${input.id}/raw-result.json`,
-      normalizedResultPath: `agents/${input.id}/normalized-result.json`,
-      metadataPath: `agents/${input.id}/metadata.json`
-    } as any;
-
-    if (input.schema) {
-      agentArtifacts.schemaPath = `agents/${input.id}/schema.json`;
-    }
 
     // Determine success/failure status based on precedence
 
@@ -345,11 +399,11 @@ export class DefaultAgentExecutor implements AgentExecutor {
   private async executeProcess(
     input: AgentExecutionInput,
     runInput: AgentRunInput,
+    commandInput: any,
     adapter: any,
     appendToLogs: (stream: "stdout" | "stderr", chunk: string, redactor: StreamRedactor) => Promise<void>,
     redactors: { stdoutRedactor: StreamRedactor; stderrRedactor: StreamRedactor }
   ): Promise<{ exitCode: number | null; timedOut: boolean; cancelled: boolean }> {
-    const commandInput = await adapter.buildCommand(runInput);
     try {
       const filteredEnv = buildProviderEnv({
         baseEnv: process.env,

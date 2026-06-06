@@ -10,6 +10,9 @@ import type {
 import { runProcess } from "./process-runner.js";
 import { shouldRedactEnvName } from "../security/env.js";
 import { appendModelArg } from "./model-args.js";
+import { resolveStructuredOutputPrompt } from "../structured/structured-output.js";
+import { OpenFlowError } from "../errors/types.js";
+import { ErrorCode } from "../errors/codes.js";
 
 export interface CodexProviderConfig extends ProviderConfig {
   promptMode?: "stdin" | "arg";
@@ -58,6 +61,18 @@ export class CodexExecAdapter implements AgentAdapter {
     const command = this.config.command ?? "codex";
     const baseArgs = this.config.args ?? ["exec", "--json", "--ephemeral"];
     const args = [...baseArgs];
+    const structuredPrompt = resolveStructuredOutputPrompt({
+      prompt: input.prompt,
+      schema: input.schema,
+      structuredOutput: input.structuredOutput
+    });
+
+    if (structuredPrompt.nativeRequested) {
+      throw new OpenFlowError(
+        ErrorCode.CLI_USAGE_ERROR,
+        'Codex does not support structuredOutput.transport="native" yet.'
+      );
+    }
 
     const model = input.model ?? this.config.defaultModel ?? undefined;
     appendModelArg(args, model, this.config.modelArg, "--model");
@@ -66,9 +81,9 @@ export class CodexExecAdapter implements AgentAdapter {
     let stdin: string | undefined = undefined;
 
     if (promptMode === "stdin") {
-      stdin = input.prompt;
+      stdin = structuredPrompt.prompt;
     } else {
-      args.push(input.prompt);
+      args.push(structuredPrompt.prompt);
     }
 
     const filteredEnv: Record<string, string> = {};
@@ -104,14 +119,17 @@ export class CodexExecAdapter implements AgentAdapter {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === "object") {
         if (typeof parsed.text === "string") {
+          const structured = tryParseEmbeddedJson(parsed.text);
           return {
             text: parsed.text,
             json: parsed,
+            structuredJson: structured,
             raw: parsed
           };
         }
         return {
           json: parsed,
+          structuredJson: parsed,
           raw: parsed
         };
       }
@@ -133,6 +151,7 @@ export class CodexExecAdapter implements AgentAdapter {
           const result: ProviderParsedResult = {
             text: structured.text,
             json: parsedJson,
+            structuredJson: parsedJson,
             raw: {
               format: "codex-jsonl",
               events,

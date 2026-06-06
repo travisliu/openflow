@@ -101,6 +101,12 @@ describe("JSON Schema Validation", () => {
     const schemaContent = JSON.parse(await fs.readFile(schemaPath, "utf-8"));
     expect(schemaContent.properties.findings).toBeDefined();
 
+    const metadataPath = path.join(agentDirPath, "metadata.json");
+    const metadataExists = await fs.access(metadataPath).then(() => true).catch(() => false);
+    expect(metadataExists).toBe(true);
+    const metadataContent = JSON.parse(await fs.readFile(metadataPath, "utf-8"));
+    expect(metadataContent.structuredOutputTransport).toBe("prompt");
+
     // Assert - normalized-result.json contains validated JSON
     const normalizedResultPath = path.join(agentDirPath, "normalized-result.json");
     const normalizedExists = await fs.access(normalizedResultPath).then(() => true).catch(() => false);
@@ -158,6 +164,10 @@ describe("JSON Schema Validation", () => {
     const validationErrorContent = JSON.parse(await fs.readFile(validationErrorPath, "utf-8"));
     expect(Array.isArray(validationErrorContent)).toBe(true);
     expect(validationErrorContent.length).toBeGreaterThan(0);
+
+    const metadataPath = path.join(agentDirPath, "metadata.json");
+    const metadataContent = JSON.parse(await fs.readFile(metadataPath, "utf-8"));
+    expect(metadataContent.structuredOutputTransport).toBe("prompt");
     
     // Check if it identifies the missing "findings" property
     const hasFindingsError = validationErrorContent.some((e: any) => 
@@ -203,6 +213,13 @@ describe("JSON Schema Validation", () => {
 
     // Assert - stderr or error message identifies that JSON could not be parsed
     expect(agentResult.error.message).toMatch(/JSON|parse|extract/i);
+
+    const runDirs = await fs.readdir(TEMP_DIR);
+    const runIdDir = runDirs.find((d) => d !== "manifest.json");
+    const runPath = path.join(TEMP_DIR, runIdDir!);
+    const metadataPath = path.join(runPath, "agents", "malformed-json-agent", "metadata.json");
+    const metadataContent = JSON.parse(await fs.readFile(metadataPath, "utf-8"));
+    expect(metadataContent.structuredOutputTransport).toBe("prompt");
   });
 
   it("Plain text succeeds when no schema is required", async () => {
@@ -239,5 +256,69 @@ describe("JSON Schema Validation", () => {
     expect(agentResult.status).toBe("succeeded");
     expect(agentResult.text).toBe("This is some plain text output.");
     expect(agentResult.json).toBeUndefined();
+  });
+
+  it("Mock native structured output fails at runtime with CLI_USAGE_ERROR", async () => {
+    const workflowPath = path.resolve("tests/fixtures/workflows/schema-validation.workflow.js");
+    const configPath = path.resolve("tests/fixtures/config/schema-validation.config.yaml");
+
+    const result = await runCli([
+      "run",
+      workflowPath,
+      "--config",
+      configPath,
+      "--out",
+      TEMP_DIR,
+      "--report",
+      "json",
+      "--arg",
+      "subcase=09.05"
+    ]);
+
+    // Parse JSON report from stdout
+    const report = JSON.parse(result.stdout);
+    
+    // The workflow itself completes successfully but the agent fails
+    expect(report.status).toBe("succeeded");
+
+    const agentResult = report.agents.find((a: any) => a.id === "mock-native-structured-output");
+    expect(agentResult).toBeDefined();
+    
+    // Assert - Agent result has ok: false
+    expect(agentResult.ok).toBe(false);
+    
+    // Assert - Agent result has status: "failed"
+    expect(agentResult.status).toBe("failed");
+    
+    // Assert - Error code is CLI_USAGE_ERROR
+    expect(agentResult.error).toBeDefined();
+    expect(agentResult.error.code).toBe("CLI_USAGE_ERROR");
+    expect(agentResult.error.message).toContain("Mock provider does not support structuredOutput.transport=\"native\" yet.");
+
+    // Find run directory
+    const runDirs = await fs.readdir(TEMP_DIR);
+    const runIdDir = runDirs.find(d => d !== "manifest.json"); 
+    const runPath = path.join(TEMP_DIR, runIdDir!);
+    const agentDirPath = path.join(runPath, "agents", "mock-native-structured-output");
+
+    // Assert - metadata.json exists
+    const metadataExists = await fs.access(path.join(agentDirPath, "metadata.json")).then(() => true).catch(() => false);
+    expect(metadataExists).toBe(true);
+
+    // Assert - prompt.txt exists
+    const promptExists = await fs.access(path.join(agentDirPath, "prompt.txt")).then(() => true).catch(() => false);
+    expect(promptExists).toBe(true);
+
+    // Assert - schema.json exists
+    const schemaExists = await fs.access(path.join(agentDirPath, "schema.json")).then(() => true).catch(() => false);
+    expect(schemaExists).toBe(true);
+
+    // Assert - raw-result.json exists and contains correct failure details
+    const rawResultExists = await fs.access(path.join(agentDirPath, "raw-result.json")).then(() => true).catch(() => false);
+    expect(rawResultExists).toBe(true);
+    const rawResult = JSON.parse(await fs.readFile(path.join(agentDirPath, "raw-result.json"), "utf8"));
+    expect(rawResult.ok).toBe(false);
+    expect(rawResult.status).toBe("failed");
+    expect(rawResult.error.code).toBe("CLI_USAGE_ERROR");
   });
 });

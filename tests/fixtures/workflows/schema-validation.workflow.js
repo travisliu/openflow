@@ -19,6 +19,9 @@ if (args.subcase === "09.01") {
         }
       },
       required: ["findings"]
+    },
+    structuredOutput: {
+      transport: "prompt"
     }
   });
 } else if (args.subcase === "09.02") {
@@ -35,6 +38,9 @@ if (args.subcase === "09.01") {
         }
       },
       required: ["findings"]
+    },
+    structuredOutput: {
+      transport: "prompt"
     }
   });
 } else if (args.subcase === "09.03") {
@@ -51,6 +57,9 @@ if (args.subcase === "09.01") {
         }
       },
       required: ["findings"]
+    },
+    structuredOutput: {
+      transport: "prompt"
     }
   });
 } else if (args.subcase === "09.04") {
@@ -59,6 +68,23 @@ if (args.subcase === "09.01") {
     provider: "mock",
     prompt: "Return some plain text",
     label: "plaintext-agent"
+  });
+} else if (args.subcase === "09.05") {
+  result = await agent({
+    id: "mock-native-structured-output",
+    provider: "mock",
+    prompt: "Return findings as JSON",
+    schema: {
+      type: "object",
+      properties: {
+        findings: {
+          type: "array",
+          items: { type: "string" }
+        }
+      },
+      required: ["findings"]
+    },
+    structuredOutput: { transport: "native" }
   });
 }
 

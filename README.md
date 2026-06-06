@@ -4,8 +4,6 @@ OpenFlow is a local-first command-line workflow runner for orchestrating coding-
 
 It lets engineers define constrained JavaScript-like workflows, run agent tasks sequentially or in parallel, capture structured results, and persist durable run artifacts for local debugging and CI automation.
 
-> **Status:** Active / Production-ready. This README describes the behavior and user-facing CLI contract of OpenFlow.
-
 ---
 
 ## Why OpenFlow?
@@ -452,7 +450,7 @@ The `PipelineStageContext` (`ctx`) object passed to each stage contains:
 
 ## Structured Output
 
-Agent calls can request structured output by providing a JSON Schema.
+Agent calls can request structured output by providing a JSON Schema. `schema` is the validation contract; `structuredOutput.transport` controls how that schema reaches the provider.
 
 ```ts
 const result = await agent({
@@ -471,13 +469,23 @@ const result = await agent({
       }
     },
     required: ["file", "findings"]
+  },
+  structuredOutput: {
+    transport: "auto"
   }
 });
 ```
 
+Transport options:
+
+- `auto`: use prompt injection for current providers and keep local validation enabled.
+- `prompt`: always inject the schema into the prompt before invoking the provider.
+- `validate-only`: do not inject the schema into the prompt; only validate the returned output locally.
+- `native`: reserved for future provider-native structured output support. Current adapters reject it.
+
 When a schema is provided, OpenFlow attempts to normalize provider output in this order:
 
-1. Provider-native structured output, when available.
+1. Provider-specific structured JSON, when the adapter can identify it.
 2. Provider JSON output, when available.
 3. First valid JSON object or block extracted from stdout.
 4. Schema validation failure if no valid JSON is available.

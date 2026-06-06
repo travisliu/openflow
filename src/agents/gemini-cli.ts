@@ -10,6 +10,10 @@ import type {
 import { runProcess } from "./process-runner.js";
 import { shouldRedactEnvName } from "../security/env.js";
 import { appendModelArg } from "./model-args.js";
+import { extractJson } from "../structured/extract-json.js";
+import { resolveStructuredOutputPrompt } from "../structured/structured-output.js";
+import { OpenFlowError } from "../errors/types.js";
+import { ErrorCode } from "../errors/codes.js";
 
 export interface GeminiProviderConfig extends ProviderConfig {
   promptFlag?: string;
@@ -60,14 +64,26 @@ export class GeminiCliAdapter implements AgentAdapter {
     const promptFlag = this.config.promptFlag ?? "-p";
     const defaultFlag = this.config.modelFlag ?? "-m";
     const promptMode = this.config.promptMode ?? "arg";
+    const structuredPrompt = resolveStructuredOutputPrompt({
+      prompt: input.prompt,
+      schema: input.schema,
+      structuredOutput: input.structuredOutput
+    });
+
+    if (structuredPrompt.nativeRequested) {
+      throw new OpenFlowError(
+        ErrorCode.CLI_USAGE_ERROR,
+        'Gemini does not support structuredOutput.transport="native" yet.'
+      );
+    }
 
     const args: string[] = [];
     let stdin: string | undefined = undefined;
 
     if (promptMode === "stdin") {
-      stdin = input.prompt;
+      stdin = structuredPrompt.prompt;
     } else {
-      args.push(promptFlag, input.prompt);
+      args.push(promptFlag, structuredPrompt.prompt);
     }
 
     const baseArgs = this.config.args ?? ["--output-format", "json"];
@@ -97,7 +113,6 @@ export class GeminiCliAdapter implements AgentAdapter {
     }
     return cmd;
   }
-
   async parseResult(input: ProviderParseInput): Promise<ProviderParsedResult> {
     const trimmed = input.stdout.trim();
     if (!trimmed) {
@@ -111,21 +126,26 @@ export class GeminiCliAdapter implements AgentAdapter {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === "object") {
         if (typeof parsed.text === "string") {
+          const structured = tryParseEmbeddedJson(parsed.text);
           return {
             text: parsed.text,
             json: parsed,
+            structuredJson: structured,
             raw: parsed
           };
         }
         if (typeof parsed.response === "string") {
+          const structured = tryParseEmbeddedJson(parsed.response);
           return {
             text: parsed.response,
             json: parsed,
+            structuredJson: structured,
             raw: parsed
           };
         }
         return {
           json: parsed,
+          structuredJson: parsed,
           raw: parsed
         };
       }
@@ -140,4 +160,9 @@ export class GeminiCliAdapter implements AgentAdapter {
       };
     }
   }
+}
+
+function tryParseEmbeddedJson(text: string): unknown | undefined {
+  const extracted = extractJson(text);
+  return extracted.ok ? extracted.value : undefined;
 }

@@ -66,7 +66,11 @@ When using this skill:
 6. Add structured output when downstream steps depend on machine-readable results.
    - Use JSON Schema for review findings, risk lists, plans, checklists, summaries, or classification output.
    - Keep schemas simple enough that providers can satisfy them reliably.
-   - Ask agents to return only JSON when a schema is required.
+   - Set `structuredOutput: { transport: "auto" }` with `schema` unless there is a specific reason to choose another transport.
+   - Use `transport: "prompt"` when you want schema instructions injected into the provider prompt explicitly.
+   - Use `transport: "validate-only"` only when the prompt already contains exact output instructions and you only want local validation.
+   - Do not use `transport: "native"` for current `codex`, `gemini`, or `mock` workflows; current adapters reject it.
+   - Ask agents to return exactly one JSON object when a schema is required.
 
 7. Make concurrency and failure behavior explicit when it matters.
    - Document expected `--concurrency`, `--timeout-ms`, and `--fail-fast` usage for CLI runs.
@@ -105,6 +109,7 @@ When using this skill:
 - Prefer validation and dry-run commands before real provider execution.
 - Keep workflow scripts provider-agnostic except for intentional provider selection in `agent()` calls.
 - In CI examples, prefer deterministic `mock` provider where the goal is smoke testing the workflow shape rather than getting real model output.
+- When using `schema`, include `structuredOutput` only with supported transports: `"auto"`, `"prompt"`, or `"validate-only"` for current providers.
 
 # Output format
 
@@ -262,6 +267,9 @@ const itemResults = await pipeline(
             risks: { type: "array", items: { type: "string" } }
           },
           required: ["document", "obligations", "risks"]
+        },
+        structuredOutput: {
+          transport: "auto"
         }
       })
     },
@@ -327,6 +335,7 @@ Before returning a final OpenFlow workflow, confirm:
 - Pipeline stages call `ctx.agent()`.
 - Provider choices are intentional and explainable.
 - Structured output schemas are valid JSON Schema objects.
+- Structured output uses a supported transport: `auto`, `prompt`, or `validate-only`.
 - CLI commands include validation before execution.
 - Config assumptions are stated clearly.
 - No unsupported APIs or out-of-scope capabilities are used.

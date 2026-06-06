@@ -1,4 +1,7 @@
-import { describe, expect, it, afterEach, beforeEach } from "vitest";
+import { describe, expect, it, afterEach, beforeEach, vi } from "vitest";
+import { OpenFlowError } from "../../../src/errors/types.js";
+import { ErrorCode } from "../../../src/errors/codes.js";
+import * as registryModule from "../../../src/agents/registry.js";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { DefaultAgentExecutor } from "../../../src/agents/execute-agent.js";
@@ -320,5 +323,150 @@ describe("DefaultAgentExecutor environment and redaction", () => {
 
     const stdoutLog = await fs.readFile(path.join(runOutDir, "agents/stdin-agent/stdout.log"), "utf8");
     expect(stdoutLog).toBe(prompt);
+  });
+
+  it("handles mock native structured output validation failure and writes raw-result.json", async () => {
+    const config: any = {
+      defaultProvider: "mock",
+      providers: {
+        mock: {
+          responses: {}
+        }
+      }
+    };
+
+    const store = new FileSystemArtifactStore({ rootDir: TEST_OUT_DIR });
+    const runId = "test-run-mock-native-fail";
+    const runOutDir = path.join(TEST_OUT_DIR, runId);
+    await store.createRun({
+      runId,
+      outDir: runOutDir,
+      workflowPath: "dummy.ts",
+      workflowSource: "",
+      workflowHash: "hash",
+      resolvedConfig: config,
+      openflowVersion: "1.0.0",
+      cwd: process.cwd()
+    });
+
+    const eventBus = new EventBus({ runId, artifactStore: store, subscribers: [] });
+    const executor = new DefaultAgentExecutor({ config, artifactStore: store, eventBus });
+
+    const result = await executor.execute({
+      id: "native-fail-agent",
+      label: "Native Fail Agent",
+      provider: "mock",
+      prompt: "test prompt",
+      model: "mock-model",
+      schema: { type: "object" },
+      structuredOutput: { transport: "native" },
+      timeoutMs: 5000,
+      cwd: process.cwd(),
+      signal: new AbortController().signal,
+      metadata: {}
+    });
+
+    // Verify execute result
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("failed");
+    expect(result.error.code).toBe("CLI_USAGE_ERROR");
+    expect(result.error.message).toContain("Mock provider does not support");
+    expect(result.artifacts.dir).toBe("agents/native-fail-agent");
+    expect(result.artifacts.rawResultPath).toBe("agents/native-fail-agent/raw-result.json");
+
+    // Verify artifact files exist
+    const agentDir = path.join(runOutDir, "agents/native-fail-agent");
+    const promptTxt = await fs.readFile(path.join(agentDir, "prompt.txt"), "utf8");
+    const metadataJson = JSON.parse(await fs.readFile(path.join(agentDir, "metadata.json"), "utf8"));
+    const rawResultJson = JSON.parse(await fs.readFile(path.join(agentDir, "raw-result.json"), "utf8"));
+
+    expect(promptTxt).toBe("test prompt");
+    expect(metadataJson.model).toBe("mock-model");
+    expect(rawResultJson.ok).toBe(false);
+    expect(rawResultJson.error.code).toBe("CLI_USAGE_ERROR");
+    expect(rawResultJson.error.message).toContain("Mock provider does not support");
+  });
+
+  it("handles buildCommand validation error and writes raw-result.json", async () => {
+    const originalRegistry = registryModule.createDefaultProviderRegistry;
+    const spy = vi.spyOn(registryModule, "createDefaultProviderRegistry").mockImplementation((deps) => {
+      const registry = originalRegistry(deps);
+      registry.register({
+        name: "fake-validation-error-provider" as any,
+        buildCommand: async () => {
+          throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, "Validation failed in buildCommand");
+        },
+        parseResult: async () => {
+          return {};
+        }
+      });
+      return registry;
+    });
+
+    const config: any = {
+      defaultProvider: "fake-validation-error-provider",
+      providers: {
+        "fake-validation-error-provider": {
+          command: "fake",
+          args: []
+        }
+      }
+    };
+
+    const store = new FileSystemArtifactStore({ rootDir: TEST_OUT_DIR });
+    const runId = "test-run-build-command-fail";
+    const runOutDir = path.join(TEST_OUT_DIR, runId);
+    await store.createRun({
+      runId,
+      outDir: runOutDir,
+      workflowPath: "dummy.ts",
+      workflowSource: "",
+      workflowHash: "hash",
+      resolvedConfig: config,
+      openflowVersion: "1.0.0",
+      cwd: process.cwd()
+    });
+
+    const eventBus = new EventBus({ runId, artifactStore: store, subscribers: [] });
+    const executor = new DefaultAgentExecutor({ config, artifactStore: store, eventBus });
+
+    const result = await executor.execute({
+      id: "fail-agent",
+      label: "Fail Agent",
+      provider: "fake-validation-error-provider" as any,
+      prompt: "test prompt",
+      model: "fake-model",
+      timeoutMs: 5000,
+      cwd: process.cwd(),
+      signal: new AbortController().signal,
+      metadata: {}
+    });
+
+    // Clean up spy
+    spy.mockRestore();
+
+    // Verify execute result
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("failed");
+    expect(result.error.code).toBe("CLI_USAGE_ERROR");
+    expect(result.error.message).toBe("Validation failed in buildCommand");
+    expect(result.artifacts.dir).toBe("agents/fail-agent");
+    expect(result.artifacts.rawResultPath).toBe("agents/fail-agent/raw-result.json");
+
+    // Verify artifact files exist
+    const agentDir = path.join(runOutDir, "agents/fail-agent");
+    const promptTxt = await fs.readFile(path.join(agentDir, "prompt.txt"), "utf8");
+    const metadataJson = JSON.parse(await fs.readFile(path.join(agentDir, "metadata.json"), "utf8"));
+    const stdoutLog = await fs.readFile(path.join(agentDir, "stdout.log"), "utf8");
+    const stderrLog = await fs.readFile(path.join(agentDir, "stderr.log"), "utf8");
+    const rawResultJson = JSON.parse(await fs.readFile(path.join(agentDir, "raw-result.json"), "utf8"));
+
+    expect(promptTxt).toBe("test prompt");
+    expect(metadataJson.model).toBe("fake-model");
+    expect(stdoutLog).toBe("");
+    expect(stderrLog).toBe("");
+    expect(rawResultJson.ok).toBe(false);
+    expect(rawResultJson.error.code).toBe("CLI_USAGE_ERROR");
+    expect(rawResultJson.error.message).toBe("Validation failed in buildCommand");
   });
 });
