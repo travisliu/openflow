@@ -128,7 +128,7 @@ export class FileSystemArtifactStore implements ArtifactStore {
     }
   }
 
-  async updateManifest(status: "succeeded" | "failed" | "cancelled", error?: any): Promise<string> {
+  async updateManifest(status: "succeeded" | "failed" | "cancelled" | "pending", error?: any): Promise<string> {
     if (!this.runRootDir || !this.manifestObj) {
       throw new Error("Run has not been created yet.");
     }

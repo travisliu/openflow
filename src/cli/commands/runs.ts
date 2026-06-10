@@ -4,6 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { defaultRunsDir } from "../../artifacts/run-store.js";
 import { inspectRun, killRun, listRuns, resolveRunRoot } from "../../artifacts/run-control.js";
 import { resolveUserPath } from "../paths.js";
+import { formatUsageSummary } from "../../output/usage.js";
 
 function resolveOutDir(rawOptions: any): string {
   const cwd = rawOptions.cwd ?? process.cwd();
@@ -34,7 +35,12 @@ export async function inspectCommand(input: { runIdOrPath: string; rawOptions: a
     `Status: ${inspection.status}`,
     `Updated: ${inspection.updatedAt ?? "unknown"}`,
     `Artifacts: ${inspection.rootDir}`,
-    `Events: ${inspection.eventCount}`
+    `Events: ${inspection.eventCount}`,
+    ...(inspection.report?.pendingPause ? [
+      `Pending pause: ${inspection.report.pendingPause.id}`,
+      `Message: ${inspection.report.pendingPause.message}`
+    ] : []),
+    ...(formatUsageSummary(inspection.report?.usageSummary) ? [formatUsageSummary(inspection.report?.usageSummary)!] : [])
   ].join("\n") + "\n");
 }
 
@@ -87,7 +93,7 @@ export async function watchCommand(input: { runIdOrPath: string; rawOptions: any
     }
 
     const inspection = await inspectRun(outDir, input.runIdOrPath);
-    if (inspection.status === "succeeded" || inspection.status === "failed" || inspection.status === "cancelled" || inspection.status === "stale") {
+    if (inspection.status === "succeeded" || inspection.status === "failed" || inspection.status === "cancelled" || inspection.status === "pending" || inspection.status === "stale") {
       return;
     }
     await sleep(250);

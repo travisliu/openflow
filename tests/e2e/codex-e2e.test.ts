@@ -269,4 +269,84 @@ reporting:
     );
     expect(cacheHit.previousRunId).toBe(firstRunId);
   }, 300000);
+
+  runIfEnabled("pauses a real Codex workflow and resumes with cached pre-pause work", async () => {
+    const workflowPath = path.join(TEMP_DIR, "pause.workflow.js");
+    const runsDir = path.join(TEMP_DIR, "runs-pause");
+
+    await fs.writeFile(workflowPath, `
+export const meta = { name: "codex-e2e-pause", description: "Real Codex pause/resume smoke test" };
+const plan = await agent("Reply with exactly: openflow-pause-plan", { id: "pause-plan" });
+const instruction = await pause("approve-plan", {
+  message: "Approve or redirect the plan.",
+  data: { plan }
+});
+let result;
+if (instruction === "skip-final") {
+  result = "skipped:" + plan;
+} else {
+  result = await agent("Reply with exactly: openflow-pause-final", { id: "pause-final" });
+}
+export default result;
+`, "utf8");
+
+    const first = await runCli([
+      "run",
+      workflowPath,
+      "--out",
+      runsDir,
+      "--timeout-ms",
+      "240000"
+    ]);
+    expect(first.error).toMatchObject({ code: "WORKFLOW_PENDING" });
+    const [firstRunId] = await listRunDirs(runsDir);
+    expect(firstRunId).toBeDefined();
+    const firstReport = await readRunReport(runsDir, firstRunId!);
+    expect(firstReport.status).toBe("pending");
+    expect(firstReport.pendingPause.id).toBe("approve-plan");
+    expect(firstReport.agents[0].id).toBe("pause-plan");
+    expect(firstReport.agents[0].usage.totalTokens).toBeGreaterThan(0);
+
+    const second = await runCli([
+      "resume",
+      firstRunId!,
+      "continue",
+      "--out",
+      runsDir
+    ]);
+    expect(second.error).toBeNull();
+    const secondRunId = (await listRunDirs(runsDir)).find((id) => id !== firstRunId)!;
+    const secondReport = await readRunReport(runsDir, secondRunId);
+    expect(secondReport.status).toBe("succeeded");
+    expect(String(secondReport.result).toLowerCase()).toContain("openflow-pause-final");
+    expect(secondReport.agents[0].cache).toMatchObject({
+      hit: true,
+      callId: "pause-plan"
+    });
+    expect(secondReport.agents[1].id).toBe("pause-final");
+
+    const resolvedConfigPath = path.join(runsDir, firstRunId!, "config.resolved.json");
+    const resolvedConfig = JSON.parse(await fs.readFile(resolvedConfigPath, "utf8"));
+    resolvedConfig.providers.codex.command = "openflow-nonexistent-codex-provider-for-pause-cache";
+    await fs.writeFile(resolvedConfigPath, JSON.stringify(resolvedConfig, null, 2), "utf8");
+
+    const third = await runCli([
+      "resume",
+      firstRunId!,
+      "skip-final",
+      "--out",
+      runsDir
+    ]);
+    expect(third.error).toBeNull();
+    const runIds = await listRunDirs(runsDir);
+    const thirdRunId = runIds.find((id) => id !== firstRunId && id !== secondRunId)!;
+    const thirdReport = await readRunReport(runsDir, thirdRunId);
+    expect(thirdReport.status).toBe("succeeded");
+    expect(String(thirdReport.result).toLowerCase()).toContain("openflow-pause-plan");
+    expect(thirdReport.agents).toHaveLength(1);
+    expect(thirdReport.agents[0].cache).toMatchObject({
+      hit: true,
+      callId: "pause-plan"
+    });
+  }, 420000);
 });

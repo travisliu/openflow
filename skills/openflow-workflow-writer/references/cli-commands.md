@@ -57,6 +57,30 @@ Notes:
 
 ---
 
+## Resume a pending workflow
+
+```bash
+openflow resume <run-id-or-path> [input]
+openflow resume <run-id-or-path> --pause <pause-id> --input <value>
+openflow resume <run-id-or-path> --pause <pause-id> --input-file decision.json
+```
+
+Examples:
+
+```bash
+openflow resume 20260610-abc123 "continue with option A"
+openflow resume 20260610-abc123 --pause approve-plan --input '{"action":"approve"}'
+```
+
+Notes:
+
+* `openflow resume` is for runs that stopped at `pause()`.
+* If the run has exactly one pending pause, `--pause` can be omitted.
+* A continuation creates a new run and safely resumes/cache-replays the previous run.
+* Schema-backed pauses require JSON input.
+
+---
+
 ## Observe runs
 
 ```bash
@@ -66,7 +90,7 @@ openflow watch <run-id-or-path> [--out <dir>] [--jsonl]
 openflow kill <run-id-or-path> [--out <dir>] [--signal SIGTERM]
 ```
 
-`watch` follows `events.jsonl`. `inspect` reads artifacts and works for running, completed, failed, and cancelled runs.
+`watch` follows `events.jsonl`. `inspect` reads artifacts and works for running, completed, failed, cancelled, and pending runs. Pretty output includes the observed usage summary when Codex reports usage.
 
 ---
 

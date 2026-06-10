@@ -93,7 +93,17 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
   if (rawOptions.verbose !== undefined) cliOverrides.verbose = !!rawOptions.verbose;
 
   // Load config
-  const config = await loadConfig({
+  const config = rawOptions.resolvedConfig ? {
+    ...rawOptions.resolvedConfig,
+    ...(reportMode !== undefined || rawOptions.verbose !== undefined ? {
+      reporting: {
+        ...rawOptions.resolvedConfig.reporting,
+        ...(reportMode !== undefined ? { mode: reportMode } : {}),
+        ...(rawOptions.verbose !== undefined ? { verbose: !!rawOptions.verbose } : {})
+      }
+    } : {}),
+    ...(rawOptions.failFast !== undefined ? { failFast: !!rawOptions.failFast } : {})
+  } : await loadConfig({
     cwd,
     configPath: rawOptions.config,
     outDir: rawOptions.out,
@@ -248,7 +258,8 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
         failFast: !!rawOptions.failFast,
         verbose: config.reporting.verbose,
         resume: rawOptions.resume,
-        noCache: rawOptions.noCache === true || rawOptions.cache === false
+        noCache: rawOptions.noCache === true || rawOptions.cache === false,
+        pauseResponses: rawOptions.pauseResponses
       },
       signal: abortController.signal
     }, (() => {
@@ -279,7 +290,7 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
 
     await updateProcessMetadata(runOutDir, {
       status: result.status,
-      exitCode: result.status === "succeeded" ? 0 : 1
+      exitCode: result.status === "succeeded" ? 0 : result.status === "pending" ? 9 : 1
     });
 
     if (result.status === "failed") {
@@ -301,6 +312,9 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
       throw new OpenFlowError(errorCode, errMessage, { cause: result.error });
     } else if (result.status === "cancelled") {
       throw new OpenFlowError(ErrorCode.USER_CANCELLED, "Workflow run was cancelled");
+    } else if (result.status === "pending") {
+      const pauseId = result.pendingPause?.id ?? "pause";
+      throw new OpenFlowError(ErrorCode.WORKFLOW_PENDING, `Workflow is pending at pause '${pauseId}'.`);
     }
   } finally {
     process.off("SIGINT", sigIntHandler);

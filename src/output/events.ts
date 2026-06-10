@@ -6,6 +6,7 @@ export type EventType =
   | "workflow.completed"
   | "workflow.failed"
   | "workflow.cancelled"
+  | "workflow.pending"
   | "phase.started"
   | "phase.completed"
   | "workflow.log"
@@ -62,6 +63,17 @@ export interface WorkflowCancelledPayload {
   status: "cancelled";
   durationMs: number;
   reason?: string;
+}
+
+export interface WorkflowPendingPayload {
+  status: "pending";
+  durationMs: number;
+  pause: {
+    id: string;
+    message: string;
+    data?: unknown;
+    artifacts?: unknown;
+  };
 }
 
 export interface PhaseStartedPayload {

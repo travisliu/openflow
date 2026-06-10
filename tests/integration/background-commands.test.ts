@@ -115,5 +115,8 @@ security:
     await waitForStatus(runsDir, completedPayload.runId, "succeeded");
     const watchResult = await runDist(["watch", completedPayload.runId, "--out", runsDir, "--jsonl"], { timeout: 5000 });
     expect(watchResult.stdout).toContain("workflow.started");
+
+    const secondWatch = await runDist(["watch", completedPayload.runId, "--out", runsDir, "--jsonl"], { timeout: 1000 });
+    expect(secondWatch.stdout).toContain("workflow.started");
   }, 45000);
 });

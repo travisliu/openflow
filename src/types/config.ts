@@ -96,4 +96,5 @@ export interface CliRunOptions {
   verbose: boolean;
   resume?: string;
   noCache?: boolean;
+  pauseResponses?: Record<string, unknown>;
 }

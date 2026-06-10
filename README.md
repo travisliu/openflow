@@ -34,6 +34,7 @@ OpenFlow supports:
 - Constrained workflow metadata parsing
 - Workflow DSL functions:
   - `agent()`
+  - `pause()`
   - `parallel()`
   - `pipeline()`
   - `phase()`
@@ -49,6 +50,7 @@ OpenFlow supports:
 - Pretty, JSON, and JSONL reporters
 - Durable artifact directories under `.openflow/runs/<runId>`
 - Same-workflow resume/cache with `--resume <runId>`
+- Pending workflows with `pause()` and `openflow resume`
 - Deterministic exit codes
 
 Future roadmap features include plugin providers, retries, worktree/container isolation, approval gates, automatic patch application, and static HTML reports.
@@ -249,6 +251,18 @@ Resume/cache only reuses successful agent calls from the same workflow hash. Ope
 
 OpenFlow does not estimate token usage. For Codex runs, it records usage reported by `codex exec --json` and can stop later work with `--max-observed-tokens` after observed usage exceeds the limit.
 
+### `openflow resume`
+
+Continues a workflow that stopped at `pause()`.
+
+```bash
+openflow resume <runId-or-path> [input]
+openflow resume <runId-or-path> --pause <pauseId> --input <value>
+openflow resume <runId-or-path> --pause <pauseId> --input-file decision.json
+```
+
+If the pending run has exactly one pause, `--pause` can be omitted. Resume creates a new run, replays the workflow, reuses successful pre-pause agent calls through same-workflow cache, returns the supplied pause input, and continues from there. The original pending run remains as an audit record.
+
 ### `openflow validate`
 
 Validates workflow metadata, syntax, and restricted behavior.
@@ -281,7 +295,7 @@ openflow watch <runId> --jsonl
 openflow kill <runId>
 ```
 
-Background runs use the same artifact files as foreground runs. `watch` follows `events.jsonl`; `inspect` reads `report.json`, `manifest.json`, and `process.json`.
+Background and pending runs use the same artifact files as foreground runs. `watch` follows `events.jsonl` and exits when a run reaches `succeeded`, `failed`, `cancelled`, or `pending`. `inspect` reads `report.json`, `manifest.json`, and `process.json`.
 
 ### `openflow doctor`
 
@@ -408,6 +422,41 @@ const reviews = await parallel(
 );
 ```
 
+### `pause(id, options)`
+
+Stops the current workflow in `pending` state and asks the caller for input.
+
+```ts
+const decision = await pause("approve-plan", {
+  message: "Review the plan before implementation.",
+  data: { plan }
+});
+```
+
+Resume with:
+
+```bash
+openflow resume <runId> "continue with the plan"
+```
+
+With a schema, resume input must be JSON and the workflow receives the validated object:
+
+```ts
+const decision = await pause("approve-plan", {
+  message: "Approve or revise the plan.",
+  schema: {
+    type: "object",
+    properties: {
+      action: { type: "string", enum: ["approve", "revise"] },
+      instruction: { type: "string" }
+    },
+    required: ["action"]
+  }
+});
+```
+
+`pause()` must use a stable non-empty id. It is intentionally unsupported inside `parallel()` branches and `pipeline()` stages.
+
 ### `phase(name)`
 
 Marks the current workflow phase.
@@ -468,6 +517,8 @@ The `PipelineStageContext` (`ctx`) object passed to each stage contains:
 - `agentId(suffix?)`: Helper to generate a unique agent ID.
 - `signal`: AbortSignal for the stage.
 - `sleep(ms)`: Utility to pause execution within the stage.
+
+Workflows can use normal JavaScript `for` and `while` loops. For cache-friendly loops, give every agent call a stable id such as `fix-${round}` or `review-${round}`. OpenFlow does not intercept CPU-only infinite loops; use explicit round limits, budgets, or periodic `pause()` calls for long-running workflows.
 
 ---
 
@@ -667,6 +718,7 @@ Every run creates a local artifact directory.
   events.jsonl
   calls.jsonl
   cache-index.json
+  pause-index.json
   process.json
   report.json
   agents/
@@ -679,9 +731,13 @@ Every run creates a local artifact directory.
       cache-hit.json
       schema.json
       validation-error.json
+  pauses/
+    <pauseId>/
+      pause.json
+      resume-input.json
 ```
 
-Artifacts are always enabled so failed or partial runs remain debuggable.
+Artifacts are always enabled so failed, partial, or pending runs remain debuggable.
 
 ---
 
@@ -698,6 +754,7 @@ Artifacts are always enabled so failed or partial runs remain debuggable.
 | 6 | User cancelled |
 | 7 | Timeout |
 | 8 | Internal error |
+| 9 | Workflow pending |
 
 ---
 

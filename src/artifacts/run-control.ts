@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 
-export type RunProcessStatus = "starting" | "running" | "succeeded" | "failed" | "cancelled" | "stale" | "unknown";
+export type RunProcessStatus = "starting" | "running" | "succeeded" | "failed" | "cancelled" | "pending" | "stale" | "unknown";
 
 export interface RunProcessMetadata {
   schemaVersion: "openflow.process.v1";
@@ -64,6 +64,17 @@ export async function updateProcessMetadata(
 
 export async function inspectRun(outDir: string, runIdOrPath: string): Promise<RunInspection> {
   const rootDir = resolveRunRoot(outDir, runIdOrPath);
+  try {
+    const stat = await fs.stat(rootDir);
+    if (!stat.isDirectory()) {
+      throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, `Run '${runIdOrPath}' is not a run directory.`);
+    }
+  } catch (err) {
+    if (err instanceof OpenFlowError) {
+      throw err;
+    }
+    throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, `Run '${runIdOrPath}' does not exist.`);
+  }
   const manifest = await readJsonIfExists(path.join(rootDir, "manifest.json"));
   const processMeta = await readProcessMetadata(rootDir);
   const report = await readJsonIfExists(path.join(rootDir, "report.json"));

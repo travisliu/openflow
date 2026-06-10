@@ -108,6 +108,21 @@ const review = await agent.review("Review current uncommitted changes.", {
 
 Use this for code-review shaped tasks. For ordinary analysis or synthesis, use `agent()`.
 
+## `pause(id, opts)`
+
+Stop a long workflow at a human decision point and let the caller resume later.
+
+```js
+const decision = await pause("approve-plan", {
+  message: "Review the plan before implementation.",
+  data: { plan }
+});
+```
+
+Use `pause()` when the next step genuinely needs caller judgment, new constraints, approval, or a parameter change. Give every pause a stable non-empty id. If the input must be structured, add a JSON schema; `openflow resume` will require valid JSON and the workflow receives the parsed object.
+
+Do not call `pause()` inside `parallel()` or inside a `pipeline()` stage. Put the pause at a top-level boundary before fan-out or after synthesis.
+
 ## `pipeline(items, stages, options?)`
 
 Run each item through ordered stages. Default to pipeline for multi-stage work.
@@ -342,6 +357,25 @@ openflow run workflow.js --resume <runId>
 ```
 
 Same workflow plus same agent call inputs should hit cache. Edited or new calls run live.
+
+For a pending workflow, continue with:
+
+```bash
+openflow resume <runId> "next instruction"
+```
+
+The resume command creates a new run, replays the workflow, hits cache for completed pre-pause agents, returns the supplied pause input, and continues. The old pending run remains as an audit record.
+
+For loops, stable ids are mandatory if you want resume/cache to behave well:
+
+```js
+for (let round = 1; round <= 3; round++) {
+  const fix = await agent("Fix round " + round, { id: `fix-${round}` });
+  await agent("Review round " + round + ":\n" + fix, { id: `review-${round}` });
+}
+```
+
+Long or open-ended loops should use explicit `maxRounds`, token/call budgets, or periodic top-level `pause()` checkpoints.
 
 # Output Requirements
 

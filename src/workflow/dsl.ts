@@ -16,6 +16,13 @@ import {
   materializeCachedAgentResult,
   recordCall
 } from "../artifacts/call-cache.js";
+import {
+  assertValidPauseId,
+  writePauseResumeInput,
+  writePendingPause
+} from "../artifacts/pause-control.js";
+import { validateJson } from "../structured/validate-json.js";
+import { WorkflowPendingError } from "./pending.js";
 
 type AgentStringOptions = Omit<AgentCallInput, "prompt"> & {
   optional?: boolean;
@@ -33,6 +40,12 @@ type AgentFacade = {
   (prompt: string, options?: AgentStringOptions): Promise<string | unknown | null>;
   review(prompt: string, options?: AgentReviewOptions): Promise<string | unknown | null>;
 };
+
+interface PauseOptions {
+  message: string;
+  data?: unknown;
+  schema?: Record<string, unknown>;
+}
 
 export function createDsl(runtime: RuntimeState) {
   const runAgentObject = async (input: AgentCallInput): Promise<AgentResult> => {
@@ -250,6 +263,58 @@ export function createDsl(runtime: RuntimeState) {
     });
   };
 
+  const pause = async (id: string, options: PauseOptions): Promise<unknown> => {
+    validatePauseInput(id, options);
+    if (getActivePipelineContext()) {
+      throw new InvalidDslCallError("pause() is not supported inside pipeline stages in the MVP.");
+    }
+    if ((runtime.parallelDepth ?? 0) > 0) {
+      throw new InvalidDslCallError("pause() is not supported inside parallel() branches in the MVP.");
+    }
+
+    const response = runtime.pauseResponses?.[id];
+    if (response !== undefined) {
+      const value = validatePauseResponse(id, response, options.schema);
+      if (runtime.artifactStore) {
+        await writePendingPause({
+          store: runtime.artifactStore,
+          pause: {
+            id,
+            message: options.message,
+            ...(options.data !== undefined ? { data: options.data } : {}),
+            ...(options.schema !== undefined ? { schema: options.schema } : {}),
+            createdAt: new Date().toISOString()
+          }
+        });
+        await writePauseResumeInput({ store: runtime.artifactStore, pauseId: id, value });
+      }
+      return value;
+    }
+
+    if (!runtime.artifactStore) {
+      throw new WorkflowPendingError({
+        id,
+        message: options.message,
+        ...(options.data !== undefined ? { data: options.data } : {}),
+        ...(options.schema !== undefined ? { schema: options.schema } : {}),
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    const pendingPause = await writePendingPause({
+      store: runtime.artifactStore,
+      pause: {
+        id,
+        message: options.message,
+        ...(options.data !== undefined ? { data: options.data } : {}),
+        ...(options.schema !== undefined ? { schema: options.schema } : {}),
+        createdAt: new Date().toISOString()
+      }
+    });
+    runtime.pendingPause = pendingPause;
+    throw new WorkflowPendingError(pendingPause);
+  };
+
   return {
     phase: (name: string): void => {
       if (!name || typeof name !== "string" || name.trim() === "") {
@@ -280,6 +345,7 @@ export function createDsl(runtime: RuntimeState) {
     },
 
     agent,
+    pause,
 
     parallel: async <T>(
       tasks: Record<string, () => Promise<T>> | Array<() => Promise<T>>
@@ -288,30 +354,35 @@ export function createDsl(runtime: RuntimeState) {
         throw new InvalidDslCallError("parallel() requires an array or an object of task thunks.");
       }
 
-      if (Array.isArray(tasks)) {
-        const promises = tasks.map((task, idx) => {
-          if (typeof task !== "function") {
-            throw new InvalidDslCallError(`parallel() task at index ${idx} must be a function.`);
+      runtime.parallelDepth = (runtime.parallelDepth ?? 0) + 1;
+      try {
+        if (Array.isArray(tasks)) {
+          const promises = tasks.map((task, idx) => {
+            if (typeof task !== "function") {
+              throw new InvalidDslCallError(`parallel() task at index ${idx} must be a function.`);
+            }
+            return task();
+          });
+          return await Promise.all(promises);
+        } else {
+          const keys = Object.keys(tasks);
+          const promises = keys.map((key) => {
+            const task = tasks[key];
+            if (typeof task !== "function") {
+              throw new InvalidDslCallError(`parallel() task '${key}' must be a function.`);
+            }
+            return task();
+          });
+          const results = await Promise.all(promises);
+          const resultObj: Record<string, T> = {};
+          for (let i = 0; i < keys.length; i++) {
+            const key = keys[i]!;
+            resultObj[key] = results[i]!;
           }
-          return task();
-        });
-        return Promise.all(promises);
-      } else {
-        const keys = Object.keys(tasks);
-        const promises = keys.map((key) => {
-          const task = tasks[key];
-          if (typeof task !== "function") {
-            throw new InvalidDslCallError(`parallel() task '${key}' must be a function.`);
-          }
-          return task();
-        });
-        const results = await Promise.all(promises);
-        const resultObj: Record<string, T> = {};
-        for (let i = 0; i < keys.length; i++) {
-          const key = keys[i]!;
-          resultObj[key] = results[i]!;
+          return resultObj;
         }
-        return resultObj;
+      } finally {
+        runtime.parallelDepth = Math.max(0, (runtime.parallelDepth ?? 1) - 1);
       }
     },
 
@@ -320,15 +391,63 @@ export function createDsl(runtime: RuntimeState) {
       stages: PipelineStage<any, any>[],
       options?: PipelineOptions
     ): Promise<PipelineResult<O>> => {
-      return runPipeline({
+      const result = await runPipeline<I, O>({
         items,
         stages,
         options,
         runtime,
         signal: runtime.abortController.signal
       });
+      const pauseError = findPipelinePauseError(result);
+      if (pauseError) {
+        throw new InvalidDslCallError(pauseError);
+      }
+      return result;
     }
   };
+}
+
+function findPipelinePauseError(result: PipelineResult<unknown>): string | undefined {
+  for (const item of result) {
+    if (item.status === "succeeded") {
+      continue;
+    }
+    for (const stage of item.stages) {
+      const message = stage.error?.message;
+      if (typeof message === "string" && message.includes("pause() is not supported inside pipeline stages")) {
+        return message;
+      }
+    }
+  }
+  return undefined;
+}
+
+function validatePauseInput(id: string, options: PauseOptions): void {
+  assertValidPauseId(id);
+  if (!options || typeof options !== "object" || Array.isArray(options)) {
+    throw new InvalidDslCallError("pause() options must be an object.");
+  }
+  if (typeof options.message !== "string" || options.message.trim() === "") {
+    throw new InvalidDslCallError("pause() options.message must be a non-empty string.");
+  }
+  if (options.schema !== undefined && (typeof options.schema !== "object" || options.schema === null || Array.isArray(options.schema))) {
+    throw new InvalidDslCallError("pause() options.schema must be a JSON schema object.");
+  }
+}
+
+function validatePauseResponse(id: string, response: unknown, schema?: Record<string, unknown>): unknown {
+  if (!schema) {
+    return typeof response === "string" ? response : JSON.stringify(response);
+  }
+  const validation = validateJson(response, schema);
+  if (!validation.ok) {
+    throw new OpenFlowError(
+      ErrorCode.CLI_USAGE_ERROR,
+      `Resume input for pause '${id}' does not match schema: ${validation.message}`,
+      { cause: validation.errors }
+    );
+  }
+  return validation.value;
 }
 
 function assertLiveAgentBudget(runtime: RuntimeState, agentId: string): void {

@@ -5,6 +5,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "./commands/run.js";
+import { resumeCommand } from "./commands/resume.js";
 import { validateCommand } from "./commands/validate.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { inspectCommand, killCommand, listCommand, watchCommand } from "./commands/runs.js";
@@ -91,6 +92,22 @@ export async function main(argv: string[]): Promise<void> {
     .option("--json", "Print JSON")
     .action(async (options) => {
       await listCommand({ rawOptions: options });
+    });
+
+  program
+    .command("resume")
+    .argument("<run-id-or-path>", "Pending run id or run artifact path")
+    .argument("[input]", "Resume input for a single pending pause")
+    .option("--pause <id>", "Pending pause id when a run has multiple pending pauses")
+    .option("--input <value>", "Resume input value")
+    .option("--input-file <path>", "Read resume input from a file")
+    .option("-o, --out <path>", "Runs artifact directory for resolving run ids")
+    .option("--cwd <path>", "Custom working directory for resolving relative paths")
+    .option("-r, --report <mode>", "Reporter mode (pretty, json, jsonl)")
+    .option("--fail-fast", "Stop immediately on first agent step failure")
+    .option("-v, --verbose", "Enable verbose logging")
+    .action(async (runIdOrPath, inputValue, options) => {
+      await resumeCommand({ runIdOrPath, inputValue, rawOptions: options });
     });
 
   program

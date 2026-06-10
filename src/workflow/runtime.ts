@@ -17,6 +17,7 @@ import { shouldTriggerFailFast } from "../orchestration/fail-fast.js";
 import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
 import { loadRuntimeCallCache } from "../artifacts/call-cache.js";
+import { isWorkflowPendingError } from "./pending.js";
 
 export interface Clock {
   now(): Date;
@@ -94,6 +95,7 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
       idGenerator: deps.idGenerator !== undefined ? deps.idGenerator : undefined,
       failFast: input.cli.failFast,
       callCache,
+      pauseResponses: input.cli.pauseResponses ?? {},
       budget: {
         maxAgentCalls: input.cli.maxAgentCalls ?? input.config.budget?.maxAgentCalls,
         maxObservedTokens: input.cli.maxObservedTokens ?? input.config.budget?.maxObservedTokens,
@@ -209,79 +211,97 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
         // Build succeeded run result
         const result = buildSucceededRunResult(runtime, workflowResult, durationMs, finishTime.toISOString(), deps.artifactStore);
         if (deps.eventSink) {
-        deps.eventSink.emit("workflow.completed", {
-          status: "succeeded",
-          durationMs,
-          result: workflowResult
-        });
+          deps.eventSink.emit("workflow.completed", {
+            status: "succeeded",
+            durationMs,
+            result: workflowResult
+          });
         }
         if (deps.artifactStore) {
-        await deps.artifactStore.updateManifest("succeeded");
+          await deps.artifactStore.updateManifest("succeeded");
         }
         return result;
-        } catch (err: any) {
+      } catch (err: any) {
         // Scheduler drain to ensure everything settles
         try {
-        await scheduler.drain();
+          await scheduler.drain();
         } catch {
-        // Ignore errors during final drain
+          // Ignore errors during final drain
         }
 
         const finishTime = deps.clock ? deps.clock.now() : new Date();
         const durationMs = finishTime.getTime() - startTime.getTime();
 
         const abortReason = runtimeAbortController.signal.reason;
+        const pendingError = isWorkflowPendingError(err) ? err : undefined;
         const budgetError = err?.code === ErrorCode.BUDGET_EXCEEDED
           ? err
           : (abortReason instanceof OpenFlowError && abortReason.code === ErrorCode.BUDGET_EXCEEDED ? abortReason : undefined);
         const isCancelled = !budgetError && (runtimeAbortController.signal.aborted || err.name === "WorkflowCancelledError");
 
-        if (budgetError) {
-        const result = buildFailedRunResult(runtime, budgetError, durationMs, finishTime.toISOString(), deps.artifactStore);
-        if (deps.eventSink) {
-          deps.eventSink.emit("workflow.failed", {
-            status: "failed",
-            durationMs,
-            error: result.error!
-          });
-        }
-        if (deps.artifactStore) {
-          await deps.artifactStore.updateManifest("failed", result.error);
-        }
-        return result;
+        if (pendingError) {
+          const result = buildPendingRunResult(runtime, pendingError.pause, durationMs, finishTime.toISOString(), deps.artifactStore);
+          if (deps.eventSink) {
+            deps.eventSink.emit("workflow.pending", {
+              status: "pending",
+              durationMs,
+              pause: {
+                id: pendingError.pause.id,
+                message: pendingError.pause.message,
+                ...(pendingError.pause.data !== undefined ? { data: pendingError.pause.data } : {}),
+                ...(pendingError.pause.artifacts !== undefined ? { artifacts: pendingError.pause.artifacts } : {})
+              }
+            });
+          }
+          if (deps.artifactStore) {
+            await deps.artifactStore.updateManifest("pending");
+          }
+          return result;
+        } else if (budgetError) {
+          const result = buildFailedRunResult(runtime, budgetError, durationMs, finishTime.toISOString(), deps.artifactStore);
+          if (deps.eventSink) {
+            deps.eventSink.emit("workflow.failed", {
+              status: "failed",
+              durationMs,
+              error: result.error!
+            });
+          }
+          if (deps.artifactStore) {
+            await deps.artifactStore.updateManifest("failed", result.error);
+          }
+          return result;
         } else if (isCancelled) {
-        const result = buildCancelledRunResult(runtime, durationMs, finishTime.toISOString(), err.message, deps.artifactStore);
-        if (deps.eventSink) {
-          deps.eventSink.emit("workflow.cancelled", {
-            status: "cancelled",
-            durationMs,
-            reason: err.message || "Workflow cancelled"
-          });
-        }
-        if (deps.artifactStore) {
-          await deps.artifactStore.updateManifest("cancelled", result.error);
-        }
-        return result;
+          const result = buildCancelledRunResult(runtime, durationMs, finishTime.toISOString(), err.message, deps.artifactStore);
+          if (deps.eventSink) {
+            deps.eventSink.emit("workflow.cancelled", {
+              status: "cancelled",
+              durationMs,
+              reason: err.message || "Workflow cancelled"
+            });
+          }
+          if (deps.artifactStore) {
+            await deps.artifactStore.updateManifest("cancelled", result.error);
+          }
+          return result;
         } else {
-        const result = buildFailedRunResult(runtime, err, durationMs, finishTime.toISOString(), deps.artifactStore);
-        if (deps.eventSink) {
-          deps.eventSink.emit("workflow.failed", {
-            status: "failed",
-            durationMs,
-            error: result.error!
-          });
+          const result = buildFailedRunResult(runtime, err, durationMs, finishTime.toISOString(), deps.artifactStore);
+          if (deps.eventSink) {
+            deps.eventSink.emit("workflow.failed", {
+              status: "failed",
+              durationMs,
+              error: result.error!
+            });
+          }
+          if (deps.artifactStore) {
+            await deps.artifactStore.updateManifest("failed", result.error);
+          }
+          return result;
         }
-        if (deps.artifactStore) {
-          await deps.artifactStore.updateManifest("failed", result.error);
-        }
-        return result;
-        }
-        }
-        finally {
+      } finally {
         if (runBudgetTimer) {
-        clearTimeout(runBudgetTimer);
+          clearTimeout(runBudgetTimer);
         }
-        }
+      }
   }
 }
 
@@ -434,6 +454,35 @@ export function buildCancelledRunResult(
   };
 
   return result;
+}
+
+export function buildPendingRunResult(
+  runtime: RuntimeState,
+  pause: NonNullable<RuntimeState["pendingPause"]>,
+  durationMs: number,
+  finishedAt: string,
+  artifactStore?: ArtifactStore
+): WorkflowRunResult {
+  const runArtifacts = artifactStore ? artifactStore.getRunArtifacts() : undefined;
+  const reportPath = runArtifacts?.reportPath || path.join(runtime.artifactsDir, "report.json");
+  const eventsPath = runArtifacts?.eventsPath || path.join(runtime.artifactsDir, "events.jsonl");
+
+  return {
+    schemaVersion: "openflow.report.v1",
+    runId: runtime.runId,
+    status: "pending",
+    meta: runtime.parsedWorkflow.meta,
+    agents: runtime.agentResults,
+    pipelines: runtime.pipelineSummaries,
+    startedAt: runtime.startedAt,
+    finishedAt,
+    durationMs,
+    artifactsDir: runtime.artifactsDir,
+    reportPath,
+    eventsPath,
+    usageSummary: summarizeUsage(runtime),
+    pendingPause: pause
+  };
 }
 
 function summarizeUsage(runtime: RuntimeState): WorkflowRunResult["usageSummary"] {
