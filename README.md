@@ -48,9 +48,10 @@ OpenFlow supports:
 - JSON Schema validation for structured agent output
 - Pretty, JSON, and JSONL reporters
 - Durable artifact directories under `.openflow/runs/<runId>`
+- Resume/cache for unchanged agent-call prefixes
 - Deterministic exit codes
 
-Future roadmap features include plugin providers, retries, worktree/container isolation, resumable runs, approval gates, automatic patch application, and static HTML reports.
+Future roadmap features include plugin providers, retries, worktree/container isolation, approval gates, automatic patch application, and static HTML reports.
 
 ---
 
@@ -223,6 +224,8 @@ Common options:
 --report <pretty|json|jsonl>
 --concurrency <number>
 --timeout-ms <number>
+--resume <runId-or-path>
+--no-cache
 --dry-run
 --fail-fast
 --verbose
@@ -238,7 +241,22 @@ openflow run workflows/review.ts --timeout-ms 600000
 openflow run workflows/review.ts --report json
 openflow run workflows/review.ts --report jsonl
 openflow run workflows/review.ts --fail-fast
+openflow run workflows/review.ts --resume <previous-run-id>
 ```
+
+### `openflow resume`
+
+Runs a new workflow attempt from a previous run's recorded invocation and reuses cached agent results for the longest unchanged prefix.
+
+```bash
+openflow resume <runId-or-path> [--out <runs-dir>] [--report <pretty|json|jsonl>] [--no-cache]
+```
+
+Resume/cache is intentionally conservative. OpenFlow replays the workflow script and compares each `agent()` call in order. A cached result is reused only while the prefix is unchanged: the call sequence must match, `id` or `label` must match when present, and the call fingerprint must match. The fingerprint includes the prompt, schema, structured-output mode, provider, resolved model, timeout, cwd, metadata, and provider config. After the first miss, later agents run live even if their individual fingerprint matches an older entry.
+
+Use stable `id` values for loops, such as `id: \`round-${i}\``. `Date.now()`, `Math.random()`, and argument-free `new Date()` are rejected because they break deterministic replay.
+
+`--no-cache` disables cache reads and cache-index updates, but still writes `calls.jsonl` for audit/debugging.
 
 ### `openflow validate`
 
@@ -643,6 +661,9 @@ Every run creates a local artifact directory.
   manifest.json
   workflow.input.ts
   config.resolved.json
+  run-input.json
+  calls.jsonl
+  cache-index.json
   events.jsonl
   report.json
   agents/

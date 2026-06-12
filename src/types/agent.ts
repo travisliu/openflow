@@ -51,6 +51,7 @@ export interface AgentSuccessResult {
   exitCode: number;
   durationMs: number;
   artifacts: AgentArtifacts;
+  cache?: AgentResultCacheInfo | undefined;
 }
 
 export interface AgentFailureResult {
@@ -66,6 +67,14 @@ export interface AgentFailureResult {
   durationMs: number;
   artifacts: AgentArtifacts;
   error: SerializedError;
+  cache?: AgentResultCacheInfo | undefined;
+}
+
+export interface AgentResultCacheInfo {
+  hit: boolean;
+  callId?: string | undefined;
+  previousRunId?: string | undefined;
+  previousAgentId?: string | undefined;
 }
 
 export interface AgentRunInput {

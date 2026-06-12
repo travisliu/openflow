@@ -13,6 +13,7 @@ export type EventType =
   | "agent.started"
   | "agent.output"
   | "agent.completed"
+  | "agent.cache_hit"
   | "agent.failed"
   | "agent.timed_out"
   | "agent.cancelled"
@@ -106,6 +107,18 @@ export interface AgentCompletedPayload {
   status: "succeeded";
   durationMs: number;
   exitCode: number;
+  artifacts: AgentArtifacts;
+}
+
+export interface AgentCacheHitPayload {
+  agentId: string;
+  label?: string;
+  provider: string;
+  model?: string;
+  sequence: number;
+  callId?: string;
+  previousRunId?: string;
+  previousAgentId: string;
   artifacts: AgentArtifacts;
 }
 
