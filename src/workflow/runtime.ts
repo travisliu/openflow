@@ -16,6 +16,7 @@ import { createLinkedAbortController } from "../orchestration/cancellation.js";
 import { shouldTriggerFailFast } from "../orchestration/fail-fast.js";
 import { OpenFlowError } from "../errors/types.js";
 import { ErrorCode } from "../errors/codes.js";
+import { loadRuntimeCallCache } from "../artifacts/call-cache.js";
 
 export interface Clock {
   now(): Date;
@@ -64,6 +65,11 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
     );
 
     const runtimeAbortController = createLinkedAbortController(input.signal);
+    const callCache = await loadRuntimeCallCache({
+      resume: input.cli.resume,
+      noCache: input.cli.noCache,
+      outDir: input.config.outDir
+    });
 
     const runtime: RuntimeState = {
       artifactStore: deps.artifactStore,
@@ -80,6 +86,8 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
       eventSink: deps.eventSink,
       abortController: runtimeAbortController,
       agentCounter: 0,
+      callSequence: 0,
+      callCache,
       pipelineCounter: 0,
       pipelineSummaries: [],
       startedAt: startTime.toISOString(),
@@ -125,7 +133,7 @@ export class DefaultRuntimeRunner implements RuntimeRunner {
 
     try {
       if (runtimeAbortController.signal.aborted) {
-        throw new Error("Workflow cancelled before execution started.");
+        throw new Error(String(runtimeAbortController.signal.reason || "Workflow cancelled before execution started."));
       }
 
       const workflowResult = await executeWorkflowModule(runtime);

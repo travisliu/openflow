@@ -200,6 +200,13 @@ export function validateWorkflow(
       }
     }
 
+    if (ts.isNewExpression(node)) {
+      const expression = node.expression;
+      if (ts.isIdentifier(expression) && expression.text === "Date" && (!node.arguments || node.arguments.length === 0)) {
+        report(node, "new Date() without arguments is not allowed because it would break resume/cache determinism.");
+      }
+    }
+
     if (ts.isPropertyAccessExpression(node)) {
       const expr = node.expression;
       const name = node.name;

@@ -6,6 +6,7 @@ import type { Scheduler } from "../types/scheduler.js";
 import type { AgentExecutor } from "../agents/execution-types.js";
 import type { RuntimeEventSink } from "../orchestration/scheduler.js";
 import type { PipelineSummary } from "../pipeline/types.js";
+import type { RuntimeCallCache } from "../artifacts/call-cache.js";
 
 export type { ParsedWorkflow, WorkflowMeta };
 
@@ -39,6 +40,8 @@ export interface RuntimeState {
   eventSink: RuntimeEventSink;
   abortController: AbortController;
   agentCounter: number;
+  callSequence?: number | undefined;
+  callCache?: RuntimeCallCache | undefined;
   pipelineCounter?: number | undefined;
   pipelineSummaries?: PipelineSummary[] | undefined;
   idGenerator?: IdGenerator | undefined;

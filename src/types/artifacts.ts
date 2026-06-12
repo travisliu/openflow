@@ -43,6 +43,9 @@ export interface RunArtifacts {
   manifestPath: string;
   workflowInputPath: string;
   resolvedConfigPath: string;
+  runInputPath: string;
+  callsPath: string;
+  cacheIndexPath: string;
   eventsPath: string;
   reportPath: string;
   agentDir(agentId: string): string;

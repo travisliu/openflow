@@ -61,6 +61,7 @@ export interface AgentSuccessResult {
   durationMs: number;
   artifacts: AgentArtifacts;
   permissions: AgentPermissions;
+  cache?: AgentResultCacheInfo | undefined;
 }
 
 export interface AgentFailureResult {
@@ -77,6 +78,14 @@ export interface AgentFailureResult {
   artifacts: AgentArtifacts;
   error: SerializedError;
   permissions: AgentPermissions;
+  cache?: AgentResultCacheInfo | undefined;
+}
+
+export interface AgentResultCacheInfo {
+  hit: boolean;
+  callId?: string | undefined;
+  previousRunId?: string | undefined;
+  previousAgentId?: string | undefined;
 }
 
 export interface AgentRunInput {

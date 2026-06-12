@@ -11,6 +11,13 @@ import { runPipeline } from "../pipeline/run.js";
 import { getActivePipelineContext, recordChildAgentId } from "../pipeline/context.js";
 import { createPipelineAgentId } from "../pipeline/id.js";
 import { isStructuredOutputTransport } from "../structured/structured-output.js";
+import {
+  computeAgentFingerprint,
+  findPrefixCacheHit,
+  materializeCachedAgentResult,
+  recordCall,
+  resolveCallId
+} from "../artifacts/call-cache.js";
 
 export function createDsl(runtime: RuntimeState) {
   return {
@@ -127,6 +134,57 @@ export function createDsl(runtime: RuntimeState) {
         providerDefaultModel: runtime.config.providers?.[normalizedProvider]?.defaultModel,
         globalDefaultModel: runtime.config.defaultModel
       });
+      const sequence = (runtime.callSequence ?? 0) + 1;
+      runtime.callSequence = sequence;
+      const callId = resolveCallId(input);
+      const fingerprint = computeAgentFingerprint({
+        call: input,
+        provider: normalizedProvider,
+        model: resolved.model,
+        timeoutMs: normalizedTimeoutMs,
+        cwd: normalizedCwd,
+        providerConfig: runtime.config.providers?.[normalizedProvider]
+      });
+
+      const cachedEntry = findPrefixCacheHit({
+        cache: runtime.callCache,
+        sequence,
+        callId,
+        fingerprint
+      });
+      if (cachedEntry && runtime.artifactStore && runtime.callCache?.previousRunRoot) {
+        const cachedResult = await materializeCachedAgentResult({
+          store: runtime.artifactStore,
+          previousRunRoot: runtime.callCache.previousRunRoot,
+          previousRunId: runtime.callCache.previousRunId,
+          entry: cachedEntry,
+          currentAgentId: normalizedId,
+          label: input.label,
+          provider: normalizedProvider,
+          model: resolved.model
+        });
+        runtime.agentResults.push(cachedResult);
+        runtime.eventSink?.emit("agent.cache_hit", {
+          agentId: normalizedId,
+          label: input.label,
+          provider: normalizedProvider,
+          model: resolved.model,
+          sequence,
+          callId,
+          previousRunId: runtime.callCache.previousRunId,
+          previousAgentId: cachedEntry.agentId,
+          artifacts: cachedResult.artifacts
+        });
+        await recordCall({
+          store: runtime.artifactStore,
+          cache: runtime.callCache,
+          sequence,
+          callId,
+          fingerprint,
+          result: cachedResult
+        });
+        return cachedResult;
+      }
 
       const task: ScheduledTask<AgentResult> = {
         id: normalizedId,
@@ -195,6 +253,14 @@ export function createDsl(runtime: RuntimeState) {
 
       const result = await runtime.scheduler.schedule(task, scheduleOptions);
       runtime.agentResults.push(result);
+      await recordCall({
+        store: runtime.artifactStore,
+        cache: runtime.callCache,
+        sequence,
+        callId,
+        fingerprint,
+        result
+      });
 
       if (!result.ok && result.error?.code === ErrorCode.PROVIDER_UNAVAILABLE) {
         throw new OpenFlowError(ErrorCode.PROVIDER_UNAVAILABLE, result.error.message);

@@ -71,6 +71,8 @@ export interface CliRunOptions {
   report?: ReporterMode;
   concurrency?: number;
   timeoutMs?: number;
+  resume?: string;
+  noCache?: boolean;
   dryRun: boolean;
   failFast: boolean;
   verbose: boolean;
