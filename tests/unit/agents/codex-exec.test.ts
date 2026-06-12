@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CodexExecAdapter } from "../../../src/agents/codex-exec.js";
 import type { AgentRunInput, ProviderParseInput } from "../../../src/agents/types.js";
 
@@ -369,5 +372,39 @@ describe("CodexExecAdapter", () => {
     expect(health.available).toBe(false);
     expect(health.command).toBe("missing-codex-binary-xyz");
     expect(health.message).toContain("is not available");
+  });
+
+  it("health check passes a safe env with PATH but without API keys", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "openflow-codex-health-"));
+    const command = join(dir, "health-check");
+    const previousOpenAiKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "should-not-leak";
+
+    try {
+      await writeFile(
+        command,
+        [
+          "#!/usr/bin/env node",
+          "if (!process.env.PATH) { console.error('missing PATH'); process.exit(2); }",
+          "if (process.env.OPENAI_API_KEY) { console.error('secret leaked'); process.exit(3); }",
+          "process.exit(0);",
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+      await chmod(command, 0o755);
+
+      const adapter = new CodexExecAdapter({ command });
+      const health = await adapter.checkHealth();
+
+      expect(health.available).toBe(true);
+    } finally {
+      if (previousOpenAiKey === undefined) {
+        delete process.env.OPENAI_API_KEY;
+      } else {
+        process.env.OPENAI_API_KEY = previousOpenAiKey;
+      }
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
