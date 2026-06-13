@@ -140,7 +140,7 @@ export interface ProviderCommand {
   args: string[];
   stdin?: string | undefined;
   cwd: string;
-  env: Record<string, string>;
+  env?: Record<string, string> | undefined;
 }
 
 export interface ProviderParseInput {
