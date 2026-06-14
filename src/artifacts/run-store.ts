@@ -71,6 +71,14 @@ export class FileSystemArtifactStore implements ArtifactStore {
     const resolvedConfigPath = path.join(runRootDir, "config.resolved.json");
     await fs.writeFile(resolvedConfigPath, JSON.stringify(input.resolvedConfig, null, 2), "utf8");
 
+    // Resume/cache artifacts
+    await fs.writeFile(path.join(runRootDir, "calls.jsonl"), "", "utf8");
+    await fs.writeFile(
+      path.join(runRootDir, "cache-index.json"),
+      JSON.stringify({ schemaVersion: "openflow.cache-index.v1", entries: [] }, null, 2),
+      "utf8"
+    );
+
     // Events file
     const eventsPath = path.join(runRootDir, "events.jsonl");
     await fs.writeFile(eventsPath, "", "utf8");
@@ -151,6 +159,9 @@ export class FileSystemArtifactStore implements ArtifactStore {
       manifestPath: path.join(rootDir, "manifest.json"),
       workflowInputPath: path.join(rootDir, "workflow.input.ts"),
       resolvedConfigPath: path.join(rootDir, "config.resolved.json"),
+      runInputPath: path.join(rootDir, "run-input.json"),
+      callsPath: path.join(rootDir, "calls.jsonl"),
+      cacheIndexPath: path.join(rootDir, "cache-index.json"),
       eventsPath: path.join(rootDir, "events.jsonl"),
       reportPath: path.join(rootDir, "report.json"),
       agentDir: (agentId: string) => {

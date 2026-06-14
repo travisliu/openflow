@@ -69,6 +69,12 @@ export class PrettyReporter implements Reporter {
         this.stdout.write(`✓ ${label} succeeded [${providerStr}] ${dur}\n`);
         break;
       }
+      case "agent.cache_hit": {
+        const label = displayAgentLabel(payload);
+        const providerStr = this.verbose && payload.model ? `${payload.provider}/${payload.model}` : payload.provider;
+        this.stdout.write(`↻ ${label} cache hit [${providerStr}]\n`);
+        break;
+      }
       case "agent.failed": {
         const label = displayAgentLabel(payload);
         const errMsg = payload.error?.message || "Unknown error";

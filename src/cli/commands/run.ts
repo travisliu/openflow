@@ -61,6 +61,14 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
   const reportMode = rawOptions.report !== undefined
     ? parseReportMode(rawOptions.report)
     : undefined;
+  const noCache = rawOptions.cache === false || rawOptions.noCache === true;
+
+  if (rawOptions.resume !== undefined && (typeof rawOptions.resume !== "string" || rawOptions.resume.trim() === "")) {
+    throw new OpenFlowError(
+      ErrorCode.CLI_USAGE_ERROR,
+      "CLI option '--resume' value must be a non-empty string."
+    );
+  }
 
   if (rawOptions.model !== undefined && (typeof rawOptions.model !== "string" || rawOptions.model.trim() === "")) {
     throw new OpenFlowError(
@@ -139,6 +147,27 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
     cwd,
     configPath: rawOptions.config
   });
+  await artifactStore.writeJson("run-input.json", {
+    schemaVersion: "openflow.run-input.v1",
+    runId: runIdGenerated,
+    workflowFile: loaded.sourcePath,
+    cwd: config.cwd,
+    outDir: config.outDir,
+    configPath: config.configPath,
+    rawOptions: {
+      provider: rawOptions.provider,
+      model: rawOptions.model,
+      arg: rawOptions.arg || [],
+      config: config.configPath,
+      cwd: config.cwd,
+      out: config.outDir,
+      report: rawOptions.report,
+      concurrency: rawOptions.concurrency,
+      timeoutMs: rawOptions.timeoutMs,
+      failFast: !!rawOptions.failFast,
+      verbose: !!rawOptions.verbose
+    }
+  });
 
   const reporter = createReporter({
     mode: config.reporting.mode,
@@ -192,6 +221,8 @@ export async function runCommand(input: RunCommandInput): Promise<void> {
         report: config.reporting.mode,
         concurrency: config.concurrency,
         timeoutMs: config.timeoutMs,
+        resume: rawOptions.resume,
+        noCache,
         dryRun: false,
         failFast: !!rawOptions.failFast,
         verbose: config.reporting.verbose

@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import { runCommand } from "./commands/run.js";
+import { resumeCommand } from "./commands/resume.js";
 import { validateCommand } from "./commands/validate.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { exitCodeForError } from "../errors/exit-codes.js";
@@ -40,6 +41,8 @@ export async function main(argv: string[]): Promise<void> {
     .option("-r, --report <mode>", "Reporter mode (pretty, json, jsonl)")
     .option("--concurrency <number>", "Maximum parallel concurrency")
     .option("--timeout-ms <ms>", "Workflow run timeout in ms")
+    .option("--resume <run-id-or-path>", "Resume from a previous run cache")
+    .option("--no-cache", "Disable resume/cache lookup and cache index updates")
     .option("--dry-run", "Validate and print summary without invoking providers")
     .option("--fail-fast", "Stop immediately on first agent step failure")
     .option("-v, --verbose", "Enable verbose logging")
@@ -57,6 +60,17 @@ export async function main(argv: string[]): Promise<void> {
         throw new OpenFlowError(ErrorCode.CLI_USAGE_ERROR, "--retry is not supported in the MVP.");
       }
       await runCommand({ workflowFile, rawOptions: options });
+    });
+
+  program
+    .command("resume")
+    .argument("<run-id-or-path>", "Previous run id or run directory path")
+    .option("--cwd <path>", "Custom working directory")
+    .option("-o, --out <path>", "Runs artifact directory")
+    .option("-r, --report <mode>", "Reporter mode (pretty, json, jsonl)")
+    .option("--no-cache", "Disable resume/cache lookup and cache index updates")
+    .action(async (runIdOrPath, options) => {
+      await resumeCommand({ runIdOrPath, rawOptions: options });
     });
 
   program
@@ -96,5 +110,4 @@ export async function main(argv: string[]): Promise<void> {
 
   await program.parseAsync(argv, parseOptions);
 }
-
 
